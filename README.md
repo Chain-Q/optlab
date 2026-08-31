@@ -29,7 +29,7 @@ python -m optlab.scripts.collect_contract_history all
 python -m optlab.server
 ```
 
-Windows 用户可双击 `启动工作台.bat`（服务器）和 `每日更新.bat`（收盘后 15:30 采集当日数据并刷新页面）。
+Windows 用户可双击 `启动工作台.bat`（服务器）和 `每日更新.bat`（收盘后手动采集当日数据并刷新页面；服务器常开则每晚 19 点后自动盯发布采集）。
 
 ## 目录结构
 
@@ -49,7 +49,7 @@ optlab/
 | 命令 | 说明 |
 |---|---|
 | `python -m optlab.server` | 启动交易工作台（含页面 + API） |
-| `python -m optlab.scripts.collect_daily` | 采集当日数据（交易日 15:30 后） |
+| `python -m optlab.scripts.collect_daily` | 采集当日数据（交易日收盘后；交易所风险指标约 19:30~21:00 发布） |
 | `python -m optlab.scripts.collect_contract_history all` | 补采五品种逐合约历史日线 |
 | `python -m optlab.scripts.run_strangle_backtest` | 卖出宽跨式回测（约 1 年） |
 | `python -m optlab.scripts.sensitivity_analysis` | 参数平原 + 成本压力 + 未来函数审计 |

@@ -20,7 +20,7 @@ UNDERLYINGS = ["588000", "159915", "510300", "510050", "510500"]
 
 
 def make_wb(tmp: str) -> Workbench:
-    wb = Workbench(data_dir=Path("optlab_data"))
+    wb = Workbench(data_dir=Path("optlab_data"), auto_update=False)  # 测试关调度线程（晚间窗口会真探测真采集）
     from optlab.data.persist import StateStore
     wb.store = StateStore(Path(tmp) / "paper.db")
     wb.paper.store = wb.store
@@ -28,11 +28,13 @@ def make_wb(tmp: str) -> Workbench:
     return wb
 
 
-def pick_liquid(wb, underlying="510300", min_vol=500):
+def pick_liquid(wb, underlying="510300", min_vol=500, min_dte=None):
+    """挑成交量最大的合约；min_dte 避开临到期合约（推进测试不可跨到期结算）"""
     wb.set_underlying(underlying)
     st = wb.state(underlying)
     cands = [r for r in st["chain"]
-             if r["last"] and r["volume"] >= min_vol]
+             if r["last"] and r["volume"] >= min_vol
+             and (min_dte is None or r["dte"] >= min_dte)]
     cands.sort(key=lambda r: -r["volume"])
     return cands[0] if cands else None
 
@@ -60,7 +62,7 @@ def test_state_payload_contract():
 def test_order_full_lifecycle_510300():
     tmp = tempfile.mkdtemp()
     wb = make_wb(tmp)
-    row = pick_liquid(wb, "510300")
+    row = pick_liquid(wb, "510300", min_dte=5)
     sym = row["contract_id"]
     assert wb.place_order(sym, "SELL", "OPEN", 2)["ok"]
     wb.confirm()
@@ -91,8 +93,8 @@ def test_two_underlying_positions_coexist():
     """多品种持仓共存：510300 与 510050 各持一腿，结算/盯市互不干扰"""
     tmp = tempfile.mkdtemp()
     wb = make_wb(tmp)
-    a = pick_liquid(wb, "510300")
-    b = pick_liquid(wb, "510050")
+    a = pick_liquid(wb, "510300", min_dte=5)
+    b = pick_liquid(wb, "510050", min_dte=5)
     assert wb.place_order(a["contract_id"], "SELL", "OPEN", 1)["ok"]
     assert wb.place_order(b["contract_id"], "SELL", "OPEN", 1)["ok"]
     wb.confirm(); r = wb.advance(); assert r["ok"]
@@ -178,6 +180,36 @@ def test_auto_jump_cursor_pending_guard():
         wb.store.set_order_status(p["order_key"], "CANCELLED")
     assert wb._auto_jump_cursor() is True
     assert wb.cursor == wb.days[-1]
+
+
+def test_auto_update_step():
+    """晚间调度单步决策：窗口外/周末/未发布不动作；发布→采集一次并去重"""
+    from types import SimpleNamespace
+    from datetime import datetime as _dt
+    tmp = tempfile.mkdtemp()
+    wb = make_wb(tmp)
+    calls = []
+    wb._run_auto_collect = lambda day: calls.append(str(day)) or 0
+    # ① 窗口外（15:00）→ 不探测不采集
+    assert wb._auto_update_step(_dt(2026, 9, 1, 15, 0)) == 60.0
+    assert wb._last_probe is None and not calls
+    # ② 窗口内未发布 → 不采集
+    wb._probe_provider = SimpleNamespace(risk_indicators=lambda d: SimpleNamespace(empty=True))
+    eve = _dt(2026, 9, 1, 20, 0)   # 周二
+    assert wb._auto_update_step(eve) == 60.0
+    assert not calls
+    # ③ 发布 → 采集一次并去重
+    wb._last_probe = None
+    wb._probe_provider = SimpleNamespace(risk_indicators=lambda d: SimpleNamespace(empty=False))
+    assert wb._auto_update_step(eve) == 60.0
+    assert calls == ["2026-09-01"]
+    assert wb._last_auto_date == "2026-09-01"
+    # ④ 已采集过 → 不再动作
+    assert wb._auto_update_step(eve) == 60.0
+    assert calls == ["2026-09-01"]
+    # ⑤ 周六 → 不动作
+    assert wb._auto_update_step(_dt(2026, 9, 5, 20, 0)) == 60.0
+    assert calls == ["2026-09-01"]
 
 
 ALL_TESTS = [v for k, v in sorted(globals().items()) if k.startswith("test_")]

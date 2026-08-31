@@ -18,7 +18,7 @@ from optlab.server import Workbench
 
 def make_wb(tmp: str) -> Workbench:
     """真实 Workbench（与 server.main 同路径），仅 db 指向临时目录"""
-    wb = Workbench(data_dir=Path("optlab_data"))
+    wb = Workbench(data_dir=Path("optlab_data"), auto_update=False)  # 测试关调度线程（晚间窗口会真探测真采集）
     from optlab.data.persist import StateStore
     wb.store = StateStore(Path(tmp) / "paper.db")
     wb.paper = PaperTradingRunner(wb.feed, wb.store, data_dir=tmp,

@@ -1,7 +1,7 @@
 """
 optlab.scripts.collect_daily — 每日收盘后统一采集入口（设计文档 §5.2 日频批处理）
 
-用途：Windows 任务计划 15:30 触发，或手动运行。做五件事：
+用途：server 晚间调度自动调用，或手动运行（即「每日更新.bat」）。做五件事：
     1. 当日 risk_indicators（IV/Greeks，全市场一次调用）
     2. 标的日线增量（510300）
     3. 逐合约 OI/量 快照（自建历史 OI 库的唯一来源——sina/交易所均无历史逐合约 OI）
@@ -31,7 +31,7 @@ def main(day: date = None):
     p = SseOptionProvider(min_interval=0.3)
     log = []
 
-    # 1) 风险指标（收盘后交易所发布有延迟：重试 3 次每次隔 60s）
+    # 1) 风险指标（收盘后交易所发布有延迟：重试 3 次每次隔 60s；实测发布时点约 19:30~21:00+，更稳的是让 server 晚间调度盯发布）
     df = pd.DataFrame()
     for attempt in range(3):
         try:
@@ -41,7 +41,7 @@ def main(day: date = None):
         except Exception:
             pass
         if attempt < 2:
-            log.append(f"risk_indicators 第{attempt+1}次无数据，60s 后重试（交易所发布延迟约 19:30-20:00）")
+            log.append(f"risk_indicators 第{attempt+1}次无数据，60s 后重试（交易所发布延迟约 19:30~21:00+）")
             time.sleep(60)
     try:
         if df.empty:

@@ -60,7 +60,7 @@ def pd_read(path):
 class Workbench:
     """装配器 + 模拟时钟 + 多品种切换。路由逻辑在此（可单测），HTTP 壳在 Handler。"""
 
-    def __init__(self, data_dir=None):
+    def __init__(self, data_dir=None, auto_update=True):
         self.data_dir = data_dir or ROOT / "optlab_data"
         store = ParquetStore(self.data_dir / "store")
         risk_all = store.read("risk_indicators")
@@ -96,7 +96,10 @@ class Workbench:
         self.live_thread = None
         self.live_target = None            # (underlying, expiry) 或 None
         self._last_auto_date = None        # 调度器去重
-        threading.Thread(target=self._auto_update_loop, daemon=True).start()
+        self._last_probe = None            # 晚间探测节流
+        self._probe_provider = None        # 惰性创建（避免拖慢启动与测试）
+        if auto_update:
+            threading.Thread(target=self._auto_update_loop, daemon=True).start()
         self.collect_status = {"running": False, "code": None, "started": None,
                                "tail": [], "done": False}
 
@@ -226,45 +229,78 @@ class Workbench:
         cs["last"] = tail[-1] if tail else None
         return cs
 
-    # ------------------------------------------------------------ 自动更新调度（交易日 15:30）
+    # ------------------------------------------------------------ 自动更新调度（晚间盯发布）
+    AUTO_WINDOW_START = (19, 0)    # 收盘后开始盯发布（风险指标实测 19:30~21:00+ 才出，15:30 必空）
+    AUTO_WINDOW_END = (23, 0)      # 截止时间
+    AUTO_PROBE_INTERVAL = 600      # 探测间隔 10 分钟（轻探测：仅拉一次当日风险指标）
+
+    def _auto_update_step(self, now) -> float:
+        """自动调度的单步决策（可单测）：晚间窗口内每 10 分钟轻探测一次交易所风险指标，
+        发布即触发采集+热更新+跳日。返回建议睡眠秒数。"""
+        if self.update_status["running"] or now.weekday() >= 5:
+            return 60.0
+        today = now.date()
+        if self._last_auto_date == str(today):
+            return 60.0   # 今天已自动采集过
+        start = now.replace(hour=self.AUTO_WINDOW_START[0], minute=self.AUTO_WINDOW_START[1],
+                            second=0, microsecond=0)
+        end = now.replace(hour=self.AUTO_WINDOW_END[0], minute=self.AUTO_WINDOW_END[1],
+                          second=0, microsecond=0)
+        if not (start <= now <= end):
+            return 60.0
+        if self._last_probe is not None and (now - self._last_probe).total_seconds() < self.AUTO_PROBE_INTERVAL:
+            return 60.0
+        self._last_probe = now
+        if self._probe_provider is None:
+            from optlab.data.provider import SseOptionProvider
+            self._probe_provider = SseOptionProvider(min_interval=0.3)
+        try:
+            published = not self._probe_provider.risk_indicators(today).empty
+        except Exception:
+            published = False   # 未发布（接口返回空表头时 akshare 会抛错）
+        if not published:
+            return 60.0
+        rc = self._run_auto_collect(today)
+        if rc == 0:
+            self._last_auto_date = str(today)
+        return 60.0
+
+    def _run_auto_collect(self, day) -> int:
+        """跑一次 collect_daily 并热更新；返回进程码。当日数据真正落库才算成功（否则下轮探测重试）。"""
+        self.update_status = {"running": True, "tail": [], "done": False}
+        try:
+            proc = subprocess.Popen(
+                [sys.executable, "-m", "optlab.scripts.collect_daily", str(day)],
+                cwd=str(ROOT), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                text=True, encoding="utf-8", errors="ignore")
+            for line in proc.stdout:
+                self.update_status["tail"].append(line.strip())
+                self.update_status["tail"] = self.update_status["tail"][-6:]
+            proc.wait()
+            if proc.returncode != 0:
+                self.update_status["tail"].append(f"FAILED rc={proc.returncode}")
+                return proc.returncode
+            self.reload_data()
+            if day not in self.days:
+                self.update_status["tail"].append(f"采集完成但 {day} 未落库，10 分钟后自动重试")
+                return 1
+            self._auto_jump_cursor()   # 有未撮合挂单则不跳（见方法注释）
+            self.update_status["done"] = True
+            self.update_status["tail"].append("DONE (auto)")
+            return 0
+        finally:
+            self.update_status["running"] = False
+
     def _auto_update_loop(self):
-        """每个交易日 15:30 自动采集当日行情并热更新（服务器常开即自动）"""
-        import datetime as _dtm
+        """服务器常开即自动：晚间窗口内盯交易所发布，发布即采集。
+        替代原 15:30 定时——那时核心风险指标尚未发布，且 today 未落库使旧条件永不触发。"""
         from datetime import datetime as dt
         while True:
             try:
-                now = dt.now()
-                today = now.date()
-                run_at = now.replace(hour=15, minute=30, second=0, microsecond=0)
-                wait = (run_at - now).total_seconds()
-                if wait > 0:
-                    _dtm_time = min(wait, 300)   # 分片睡眠，便于响应退出
-                    time.sleep(max(_dtm_time, 5))
-                    continue
-                # 已到 15:30：若是已知交易日且今天未自动采集过 → 触发
-                if (str(today) in self.days and self._last_auto_date != str(today)
-                        and not self.update_status["running"]):
-                    self._last_auto_date = str(today)
-                    self.update_status = {"running": True, "tail": [], "done": False}
-                    proc = subprocess.Popen(
-                        [sys.executable, "-m", "optlab.scripts.collect_daily", str(today)],
-                        cwd=str(ROOT), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                        text=True, encoding="utf-8", errors="ignore")
-                    for line in proc.stdout:
-                        self.update_status["tail"].append(line.strip())
-                        self.update_status["tail"] = self.update_status["tail"][-6:]
-                    proc.wait()
-                    if proc.returncode == 0:
-                        self.reload_data()
-                        self._auto_jump_cursor()   # 有未撮合挂单则不跳（见方法注释）
-                        self.update_status["done"] = True
-                        self.update_status["tail"].append("DONE (auto)")
-                    else:
-                        self.update_status["tail"].append(f"FAILED rc={proc.returncode}")
-                    self.update_status["running"] = False
-                time.sleep(60)
+                self._auto_update_step(dt.now())
             except Exception:
-                time.sleep(120)
+                pass
+            time.sleep(60)
 
     # ------------------------------------------------------------ 实时行情（盘中轮询 sina 快照）
     def live_start(self, underlying: str, expiry: str = None) -> dict:
