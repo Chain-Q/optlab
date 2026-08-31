@@ -174,6 +174,21 @@ class Workbench:
             n += 1
         return {"ok": True, "confirmed": n}
 
+    def _auto_jump_cursor(self) -> bool:
+        """更新成功后时钟自动跳到最新交易日（纯浏览动作，有新数据才可见变化）。
+        有未撮合挂单（PENDING/CONFIRMED）时不跳：跳到最新日后「推进」无下一日可推进，
+        挂单会被跳过结算——此时提示用户先推进撮合。"""
+        new_cursor = max(self.days)
+        if new_cursor <= self.cursor:
+            return False
+        if self.store.pending("PENDING") or self.store.pending("CONFIRMED"):
+            self.update_status["tail"].append(
+                "有未撮合挂单，时钟未自动跳转：请先「推进下一交易日」完成撮合，再看新数据")
+            return False
+        self.cursor = new_cursor
+        self.update_status["tail"].append(f"CURSOR→{new_cursor}")
+        return True
+
     def start_update(self) -> dict:
         """页面一键更新当日数据：collect_daily（风险指标/标的日线/持仓快照/深市快照）→ reload"""
         if self.update_status["running"]:
@@ -193,11 +208,7 @@ class Workbench:
                 self.update_status["done"] = proc.returncode == 0
                 if proc.returncode == 0:
                     self.reload_data()
-                    # 更新成功后时钟自动跳到最新交易日（有新数据才可见变化）
-                    new_cursor = max(self.days)
-                    if new_cursor > self.cursor:
-                        self.cursor = new_cursor
-                        self.update_status["tail"].append(f"CURSOR→{new_cursor}")
+                    self._auto_jump_cursor()
                     self.update_status["tail"].append("DONE (reloaded)")
                 else:
                     self.update_status["tail"].append(f"FAILED rc={proc.returncode}")
@@ -245,7 +256,7 @@ class Workbench:
                     proc.wait()
                     if proc.returncode == 0:
                         self.reload_data()
-                        self.cursor = max(self.days)   # 时钟跳到最新交易日
+                        self._auto_jump_cursor()   # 有未撮合挂单则不跳（见方法注释）
                         self.update_status["done"] = True
                         self.update_status["tail"].append("DONE (auto)")
                     else:

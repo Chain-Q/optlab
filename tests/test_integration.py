@@ -151,6 +151,35 @@ def test_live_toggle_contract():
     assert r["ok"]
 
 
+def test_auto_jump_cursor_pending_guard():
+    """更新后自动跳日：无挂单→跳最新；有未撮合挂单（PENDING/CONFIRMED）→不跳并提示"""
+    tmp = tempfile.mkdtemp()
+    wb = make_wb(tmp)
+    old_day = wb.days[-6]
+    wb.cursor = old_day
+    # ① 无挂单 → 跳到最新
+    assert wb._auto_jump_cursor() is True
+    assert wb.cursor == wb.days[-1]
+    # ② 有 PENDING 挂单（已挂未确认）→ 不跳 + 提示
+    wb.cursor = old_day
+    row = pick_liquid(wb, "510300")
+    assert wb.place_order(row["contract_id"], "SELL", "OPEN", 1)["ok"]
+    assert wb.store.pending("PENDING")
+    assert wb._auto_jump_cursor() is False
+    assert wb.cursor == old_day
+    assert any("未撮合挂单" in t for t in wb.update_status["tail"])
+    # ③ 确认后（CONFIRMED，待推进撮合）→ 同样不跳
+    wb.confirm()
+    assert wb.store.pending("CONFIRMED")
+    assert wb._auto_jump_cursor() is False
+    assert wb.cursor == old_day
+    # ④ 挂单清除后 → 恢复可跳
+    for p in wb.store.pending("PENDING") + wb.store.pending("CONFIRMED"):
+        wb.store.set_order_status(p["order_key"], "CANCELLED")
+    assert wb._auto_jump_cursor() is True
+    assert wb.cursor == wb.days[-1]
+
+
 ALL_TESTS = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
 
 if __name__ == "__main__":
