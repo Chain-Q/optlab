@@ -630,11 +630,12 @@ function renderChain(){
   const gkCell = (r) => COL_MODE==="full"
     ? `<td>${fmt(r.gamma,2)}</td><td>${fmt((r.vega||0)*10000,1)}</td><td>${fmt((r.theta||0)*10000,1)}</td>`
     : "";
+  const sideSpan = COL_MODE==="full" ? 8 : 5;   // 认购/认沽各侧列数（Γ/ν/Θ 三列随完整模式加入）
   document.getElementById("ttype").innerHTML =
     `<thead>
-     <tr><th colspan="${COL_MODE==="full"?5:5}+0" style="background:color-mix(in oklab,var(--rise) 8%,transparent);color:var(--rise);font-weight:650;text-align:center">看涨 · 认购（Call）</th>
+     <tr><th colspan="${sideSpan}" style="background:color-mix(in oklab,var(--rise) 8%,transparent);color:var(--rise);font-weight:650;text-align:center">看涨 · 认购（Call）</th>
      <th style="background:var(--surface-muted)"></th>
-     <th colspan="${COL_MODE==="full"?5:5}+0" style="background:color-mix(in oklab,var(--fall) 8%,transparent);color:var(--fall);font-weight:650;text-align:center">看跌 · 认沽（Put）</th></tr>
+     <th colspan="${sideSpan}" style="background:color-mix(in oklab,var(--fall) 8%,transparent);color:var(--fall);font-weight:650;text-align:center">看跌 · 认沽（Put）</th></tr>
      <tr>
      <th data-tip="Delta：标的涨 1 元，期权价格变多少。认购 0~1，认沽 −1~0。越接近 0 越虚值。">Delta</th>
      <th data-tip="隐含波动率：市场对未来波动的预期。高=期权贵，低=便宜。IV Rank 看它在一年中处于什么位置。">IV%</th>
