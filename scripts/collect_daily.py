@@ -31,17 +31,26 @@ def main(day: date = None):
     p = SseOptionProvider(min_interval=0.3)
     log = []
 
-    # 1) 风险指标（非交易日/无数据时优雅跳过）
+    # 1) 风险指标（收盘后交易所发布有延迟：重试 3 次每次隔 60s）
+    df = pd.DataFrame()
+    for attempt in range(3):
+        try:
+            df = p.risk_indicators(day)
+            if not df.empty:
+                break
+        except Exception:
+            pass
+        if attempt < 2:
+            log.append(f"risk_indicators 第{attempt+1}次无数据，60s 后重试（交易所发布延迟约 19:30-20:00）")
+            time.sleep(60)
     try:
-        df = p.risk_indicators(day)
         if df.empty:
-            log.append(f"risk_indicators: {day} 非交易日或无数据，跳过")
+            log.append(f"risk_indicators: {day} 数据未发布（非交易日或发布延迟），跳过")
         else:
             n = store.write("risk_indicators", df)
             log.append(f"risk_indicators: +{n} 行")
     except Exception as e:
-        msg = str(e)
-        log.append(f"risk_indicators {'跳过（非交易日）' if 'None of' in msg or 'empty' in msg.lower() else 'FAIL: ' + type(e).__name__ + ' ' + msg[:50]}")
+        log.append(f"risk_indicators FAIL: {type(e).__name__} {str(e)[:50]}")
 
     # 2) 标的日线（全品种增量）
     try:

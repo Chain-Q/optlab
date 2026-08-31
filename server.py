@@ -193,6 +193,11 @@ class Workbench:
                 self.update_status["done"] = proc.returncode == 0
                 if proc.returncode == 0:
                     self.reload_data()
+                    # 更新成功后时钟自动跳到最新交易日（有新数据才可见变化）
+                    new_cursor = max(self.days)
+                    if new_cursor > self.cursor:
+                        self.cursor = new_cursor
+                        self.update_status["tail"].append(f"CURSOR→{new_cursor}")
                     self.update_status["tail"].append("DONE (reloaded)")
                 else:
                     self.update_status["tail"].append(f"FAILED rc={proc.returncode}")
