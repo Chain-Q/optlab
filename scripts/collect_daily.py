@@ -31,13 +31,17 @@ def main(day: date = None):
     p = SseOptionProvider(min_interval=0.3)
     log = []
 
-    # 1) 风险指标
+    # 1) 风险指标（非交易日/无数据时优雅跳过）
     try:
         df = p.risk_indicators(day)
-        n = store.write("risk_indicators", df)
-        log.append(f"risk_indicators: +{n} 行")
+        if df.empty:
+            log.append(f"risk_indicators: {day} 非交易日或无数据，跳过")
+        else:
+            n = store.write("risk_indicators", df)
+            log.append(f"risk_indicators: +{n} 行")
     except Exception as e:
-        log.append(f"risk_indicators FAIL: {type(e).__name__} {str(e)[:60]}")
+        msg = str(e)
+        log.append(f"risk_indicators {'跳过（非交易日）' if 'None of' in msg or 'empty' in msg.lower() else 'FAIL: ' + type(e).__name__ + ' ' + msg[:50]}")
 
     # 2) 标的日线（全品种增量）
     try:
@@ -84,23 +88,28 @@ def main(day: date = None):
 
     # 3) 逐合约 OI/量 快照（当日全合约，自建 OI 库）
     try:
-        snap = p.contract_static()          # 静态表校验合约宇宙
-        risks = p.risk_indicators(day)
-        rows = []
-        for sid in risks["security_id"].unique():
-            s = p.contract_spot(sid)
-            s["trade_date"] = day
-            rows.append(s)
-        oi_df = pd.DataFrame(rows)
-        out = store.root / "oi_snapshots"
-        out.mkdir(parents=True, exist_ok=True)
-        f = out / f"{day:%Y%m}.parquet"
-        if f.exists():
-            old = pd.read_parquet(f)
-            oi_df = pd.concat([old, oi_df], ignore_index=True) \
-                .drop_duplicates(subset=["security_id", "trade_date"], keep="last")
-        oi_df.to_parquet(f, index=False)
-        log.append(f"OI 快照: {len(oi_df)} 行（含持仓量，累计建库）")
+        try:
+            risks = p.risk_indicators(day)
+        except Exception:
+            risks = pd.DataFrame()   # 非交易日：交易所接口返回空表头 → KeyError
+        if risks.empty:
+            log.append(f"OI 快照跳过：{day} 非交易日（无行情）")
+        else:
+            rows = []
+            for sid in risks["security_id"].unique():
+                s_ = p.contract_spot(sid)
+                s_["trade_date"] = day
+                rows.append(s_)
+            oi_df = pd.DataFrame(rows)
+            out = store.root / "oi_snapshots"
+            out.mkdir(parents=True, exist_ok=True)
+            f = out / f"{day:%Y%m}.parquet"
+            if f.exists():
+                old = pd.read_parquet(f)
+                oi_df = pd.concat([old, oi_df], ignore_index=True) \
+                    .drop_duplicates(subset=["security_id", "trade_date"], keep="last")
+            oi_df.to_parquet(f, index=False)
+            log.append(f"OI 快照: {len(oi_df)} 行（含持仓量，累计建库）")
     except Exception as e:
         log.append(f"OI 快照 FAIL: {type(e).__name__} {str(e)[:60]}")
 

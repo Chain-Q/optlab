@@ -10,6 +10,16 @@ API：GET / 与 /api/state(?underlying=)；POST /api/order、/api/confirm、/api
 """
 from __future__ import annotations
 
+import os as _os
+import sys as _sys
+
+# 任意目录启动自愈：把包父目录（WKB）加入模块搜索路径——
+# 必须在 import optlab.* 之前执行（python -m / 直接路径启动都覆盖）
+_PARENT = str(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
+if _PARENT not in _sys.path:
+    _sys.path.insert(0, _PARENT)
+_os.chdir(_PARENT)
+
 import json
 import re
 import subprocess
@@ -592,6 +602,8 @@ class Handler(BaseHTTPRequestHandler):
             self._json(self.wb.state((q.get("underlying") or [None])[0]))
         elif path == "/api/collect_status":
             self._json({"ok": True, **self.wb.collect_status_now()})
+        elif path == "/api/update_status":
+            self._json({"ok": True, **self.wb.update_status_now()})
         else:
             self._json({"ok": False, "msg": "not found"}, 404)
 
@@ -642,6 +654,12 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main(host="127.0.0.1", port=8300, open_browser=True, retries=5):
+    # 目录自愈：从任意目录启动都能找到 optlab 包（ModuleNotFoundError 防护）
+    import os as _os
+    _root = str(ROOT)
+    if _root not in _os.getcwd():
+        _os.chdir(_root)
+        sys.path.insert(0, _root)
     Handler.wb = Workbench()
     srv = None
     for p in range(port, port + retries):
