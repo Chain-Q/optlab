@@ -560,8 +560,10 @@ function renderTrading(S){
   const spTxt = S.spot!=null ? Number(S.spot).toFixed(3) : "—（未采集标的行情）";
   document.getElementById("chainSpot").textContent =
     `${S.underlying||D.underlying} ${S.underlying_name||""} 收盘 ${spTxt}`;
-  document.getElementById("meta").textContent =
-    `模拟时钟 ${S.cursor} ｜ ${S.underlying||D.underlying} ${S.underlying_name||""}`;
+  const clockTxt = S.live_today
+    ? `盘中实时 ${S.now_clock||""}（价格=实时快照）｜ 数据基准 ${S.cursor}（IV/Greeks/撮合为该收盘日官方口径）`
+    : `模拟时钟 ${S.cursor} ｜ ${S.underlying||D.underlying} ${S.underlying_name||""}`;
+  document.getElementById("meta").textContent = clockTxt;
   const daySel = document.getElementById("daySel");
   if(S.days && S.days.length){
     daySel.innerHTML = S.days.map(d=>`<option ${d===S.cursor?"selected":""}>${d}</option>`).join("");
@@ -1000,7 +1002,7 @@ document.addEventListener("keydown",e=>{
 
 /* ================= 启动 ================= */
 document.getElementById("liveNote").innerHTML = LIVE
-  ? "🟢 服务器模式：下单/确认/推进交易日可用，状态每 5s 刷新。交易日 15:30 服务器自动更新当日行情（无需手动操作）；盘中可点「实时行情」开关看 5 秒级快照。"
+  ? "🟢 服务器模式：下单/确认/推进交易日可用，状态每 5s 刷新。交易日收盘后 19:00~23:00 服务器自动盯交易所发布并采集（发布约 19:30~21:00，无需手动）；盘中可点「实时行情」——价格为新浪实时快照（当日），IV/Greeks 仍为最近收盘日官方口径，撮合永远按 T+1 收盘价。"
   : "🟡 静态预览：可浏览行情与研究，但<b>无法下单</b>。启用交易：命令行运行 <code>python -m optlab.server</code> 后打开 http://127.0.0.1:8300";
 if(LIVE){ refresh(); setInterval(refresh, 5000); }
 else { renderTrading(pseudoState()); }

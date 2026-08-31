@@ -185,6 +185,25 @@ class SseOptionProvider(MarketDataProvider):
             "quote_time": kv.get("行情时间"),
         }
 
+    # ---- 标的 ETF 实时快照（盘中定位 ATM 档用）
+    _etf_spot_cache = None   # [df, ts]——全量快照一次请求，60s 内复用
+    def underlying_spot(self, underlying: str) -> Dict:
+        """标的 ETF 最新价。东财全量 ETF 快照一次请求本地过滤（避免逐品种请求）"""
+        import time as _t
+        import akshare as ak
+        hit = self._etf_spot_cache
+        if hit is None or _t.time() - hit[1] > 60:
+            self._throttle()
+            df = ak.fund_etf_spot_em()
+            self._etf_spot_cache = [df, _t.time()]
+        else:
+            df = hit[0]
+        row = df[df["代码"].astype(str) == str(underlying)]
+        if row.empty:
+            return {"last": float("nan")}
+        return {"last": float(row.iloc[0]["最新价"]),
+                "name": str(row.iloc[0]["名称"])}
+
     # ---- 逐合约历史日线（sina，成交量单位=份额，统一换算为张）
     def contract_daily(self, security_id: str) -> pd.DataFrame:
         if security_id in self._daily_cache:

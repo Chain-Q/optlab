@@ -304,13 +304,16 @@ class Workbench:
 
     # ------------------------------------------------------------ 实时行情（盘中轮询 sina 快照）
     def live_start(self, underlying: str, expiry: str = None) -> dict:
-        """开启实时轮询：仅采集当前查看的到期月链（ATM±全部档位），约 5s/轮"""
+        """开启实时轮询：仅采集当前查看的到期月链（ATM±全部档位），约 5s/轮。
+        盘中语义：价格=新浪实时快照（当日），IV/Greeks=最近收盘日官方口径（cursor 日）。
+        ATM 档按标的实时价定位（cursor 日无该品种风险表时退化为全量前 13 档）。"""
         if underlying not in UNDERLYINGS:
             return {"ok": False, "msg": "未知品种"}
         self.live_target = (underlying, expiry)
         if self.live_thread and self.live_thread.is_alive():
             return {"ok": True, "msg": "实时行情已在运行"}
         def run():
+            from optlab.data.provider import SseOptionProvider
             p = SseOptionProvider(min_interval=0.18)
             import time as _t
             while (self.live_target and
@@ -319,26 +322,29 @@ class Workbench:
                 try:
                     day = self.cursor
                     day_risk = self.feed.risk_by_day.get(day)
-                    if day_risk is not None:
-                        g = day_risk[day_risk["underlying"] == u]
-                        if exp:
-                            g = g[g["expiry"].astype(str) == exp]
-                        # 限流：只轮询 ATM±6 档（约 13 合约），避免全链上百请求触发 sina 风控
+                    g = (day_risk[day_risk["underlying"] == u]
+                         if day_risk is not None else None)
+                    spot = None
+                    try:   # 盘中 ATM 按标的实时价定位（与收盘价无关）
+                        spot = float(p.underlying_spot(u)["last"])
+                    except Exception:
                         spot = self.close_all.get((u, day), float("nan"))
-                        if spot == spot:
-                            strikes = sorted(g["strike"].unique(),
-                                             key=lambda k: abs(k - spot))[:13]
-                            g = g[g["strike"].isin(strikes)]
-                        for r in g.itertuples(index=False):
-                            try:
-                                s_ = p.contract_spot(r.security_id)
-                                self.live_cache[r.contract_id] = {
-                                    "last": s_["last"], "volume": s_["volume"],
-                                    "bid": s_["bid"], "ask": s_["ask"],
-                                    "open_interest": s_["open_interest"],
-                                    "ts": _t.time()}
-                            except Exception:
-                                pass
+                    if exp:
+                        g = g[g["expiry"].astype(str) == exp]
+                    if g is not None and len(g) and spot == spot:
+                        strikes = sorted(g["strike"].unique(),
+                                         key=lambda k: abs(k - spot))[:13]
+                        g = g[g["strike"].isin(strikes)]
+                    for r in (g.itertuples(index=False) if g is not None else []):
+                        try:
+                            s_ = p.contract_spot(r.security_id)
+                            self.live_cache[r.contract_id] = {
+                                "last": s_["last"], "volume": s_["volume"],
+                                "bid": s_["bid"], "ask": s_["ask"],
+                                "open_interest": s_["open_interest"],
+                                "ts": _t.time()}
+                        except Exception:
+                            pass
                 except Exception:
                     pass
                 _t.sleep(4)
@@ -594,9 +600,17 @@ class Workbench:
 
     def _state_payload(self, und, day, spot, account, rows, expiries, pending, eq,
                        has_daily_bars, collected, note):
+        import datetime as _dt
+        live_on = bool(self.live_thread and self.live_thread.is_alive())
+        now = _dt.datetime.now()
+        # 实时行情的日期歧义防护：盘中(当日有交易且已收盘前)实时价属于"今天"，
+        # 而 IV/Greeks/撮合数据属于 cursor 日——前端据此显示双时间基准
+        live_today = live_on and now.date() not in self.days   # 今天尚无收盘数据=盘中
         return {
             "ok": True, "cursor": str(day), "underlying": und,
-            "live": bool(self.live_thread and self.live_thread.is_alive()),
+            "live": live_on,
+            "live_today": live_today,
+            "now_clock": now.strftime("%Y-%m-%d %H:%M"),
             "server_started": self.server_started,
             "underlying_name": UND_NAME.get(und, und),
             "has_daily_bars": has_daily_bars, "collected": collected, "note": note,
