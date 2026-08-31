@@ -1,5 +1,5 @@
 """
-optlab.strategy.advisor — 策略自动推荐（设计方案 §5.5）
+thetalab.strategy.advisor — 策略自动推荐（设计方案 §5.5）
 
 四维打分：流动性 0.30 + IV 吸引力 0.30 + 期限适配 0.20 + 结构匹配 0.20 − 惩罚项。
 规则矩阵给出候选模板；每张卡片带 ≤3 条数据依据 + 针对性风险 + 退出计划。
@@ -31,7 +31,7 @@ class Recommendation:
 class Advisor:
     def __init__(self, templates=None):
         self._templates = templates or list(__import__(
-            "optlab.strategy.templates", fromlist=["TEMPLATES"]).TEMPLATES.keys())
+            "thetalab.strategy.templates", fromlist=["TEMPLATES"]).TEMPLATES.keys())
 
     def recommend(self, ind: dict, chain_oi: float, chain_volume: float,
                   dte_choices: List[int], top_n: int = 3) -> List[Recommendation]:

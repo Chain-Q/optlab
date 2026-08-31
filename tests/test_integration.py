@@ -1,11 +1,11 @@
 """
-optlab.tests.test_integration — 全 API 集成测试（Workbench 逻辑层，覆盖全部端点逻辑）
+thetalab.tests.test_integration — 全 API 集成测试（Workbench 逻辑层，覆盖全部端点逻辑）
 
 覆盖清单（与 HTTP 路由一一对应）：
     state（含 has_daily_bars/note/live 字段）｜order（合法/各拒单分支/159915 闸门）
     confirm｜advance（撮合+结算+时钟）｜set_day｜set_underlying（合法/未知/512100）
     cancel_all｜live_start/live_stop
-运行：python -m optlab.tests.test_integration
+运行：python -m thetalab.tests.test_integration
 """
 import shutil
 import sys
@@ -14,14 +14,14 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from optlab.server import Workbench
+from thetalab.server import Workbench
 
 UNDERLYINGS = ["588000", "159915", "510300", "510050", "510500"]
 
 
 def make_wb(tmp: str) -> Workbench:
-    wb = Workbench(data_dir=Path("optlab_data"), auto_update=False)  # 测试关调度线程（晚间窗口会真探测真采集）
-    from optlab.data.persist import StateStore
+    wb = Workbench(data_dir=Path("thetalab_data"), auto_update=False)  # 测试关调度线程（晚间窗口会真探测真采集）
+    from thetalab.data.persist import StateStore
     wb.store = StateStore(Path(tmp) / "paper.db")
     wb.paper.store = wb.store
     wb.cursor = wb.days[-6]  # 回退到可推进的日期（交易闭环测试需要 advance 空间）

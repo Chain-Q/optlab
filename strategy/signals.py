@@ -1,5 +1,5 @@
 """
-optlab.strategy.signals — 择时信号引擎（设计方案 §5.6）
+thetalab.strategy.signals — 择时信号引擎（设计方案 §5.6）
 
 四类信号源：波动率偏离 / 技术形态 / 到期临近 / 事件日历。
 强制要求：每条信号带证据链（evidence），dedup_key 冷却去重，界面只展示 Top 5，

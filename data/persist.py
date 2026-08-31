@@ -1,5 +1,5 @@
 """
-optlab.data.persist — 模拟盘状态持久化（SQLite）
+thetalab.data.persist — 模拟盘状态持久化（SQLite）
 
 事务型状态：账户/持仓/订单/成交/信号/净值曲线。
 模拟盘的全部长期价值在于可复盘（§7.3）——每笔都留 reason/evidence。
@@ -50,7 +50,7 @@ def _locked(fn):
 
 class StateStore:
     _lock = None  # 占位，实际锁在 __init__
-    def __init__(self, path: str | Path = "optlab_data/paper.db"):
+    def __init__(self, path: str | Path = "thetalab_data/paper.db"):
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
         # 服务器模式（ThreadingHTTPServer）跨线程访问：关闭同线程检查 + 写锁

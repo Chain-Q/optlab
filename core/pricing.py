@@ -1,5 +1,5 @@
 """
-optlab.core.pricing — 期权定价、希腊字母与隐含波动率
+thetalab.core.pricing — 期权定价、希腊字母与隐含波动率
 
 支持三种模型：
     1. Black-Scholes-Merton（连续分红率 q）：适用于 ETF 期权（欧式）

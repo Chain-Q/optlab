@@ -1,6 +1,6 @@
 """
-optlab.tests.test_signals — P3-E 指标库 / Advisor / 信号引擎 单测
-运行：python -m optlab.tests.test_signals
+thetalab.tests.test_signals — P3-E 指标库 / Advisor / 信号引擎 单测
+运行：python -m thetalab.tests.test_signals
 """
 import math
 import sys
@@ -12,10 +12,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 import numpy as np
 import pandas as pd
 
-from optlab.core.indicators import build_indicators, iv_rank_of
-from optlab.core.models import Instrument, Position, Right
-from optlab.strategy.advisor import Advisor
-from optlab.strategy.signals import SignalEngine
+from thetalab.core.indicators import build_indicators, iv_rank_of
+from thetalab.core.models import Instrument, Position, Right
+from thetalab.strategy.advisor import Advisor
+from thetalab.strategy.signals import SignalEngine
 
 TODAY = date(2026, 8, 28)
 

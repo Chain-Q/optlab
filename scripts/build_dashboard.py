@@ -1,8 +1,8 @@
 """
-optlab.scripts.build_dashboard — 单文件 HTML 工作台（设计方案 P4 / §3 L5）
+thetalab.scripts.build_dashboard — 单文件 HTML 工作台（设计方案 P4 / §3 L5）
 
 零依赖：无 CDN、无构建，双击即开。数据由本脚本从本地库装配后内联。
-运行：python -m optlab.scripts.build_dashboard  →  optlab_data/dashboard.html
+运行：python -m thetalab.scripts.build_dashboard  →  thetalab_data/dashboard.html
 """
 import json
 import re
@@ -18,18 +18,18 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 import pandas as pd
 import numpy as np
 
-from optlab.core.indicators import build_indicators, iv_rank_of
-from optlab.data.persist import StateStore
-from optlab.data.provider import ParquetStore, SseOptionProvider
-from optlab.engine.runner import BacktestRunner
-from optlab.core.pricing import bs_greeks
-from optlab.strategy.advisor import Advisor
-from optlab.strategy.payoff import PayoffLeg, build_curves
-from optlab.strategy.signals import SignalEngine
-from optlab.strategy.spec import resolve_legs
+from thetalab.core.indicators import build_indicators, iv_rank_of
+from thetalab.data.persist import StateStore
+from thetalab.data.provider import ParquetStore, SseOptionProvider
+from thetalab.engine.runner import BacktestRunner
+from thetalab.core.pricing import bs_greeks
+from thetalab.strategy.advisor import Advisor
+from thetalab.strategy.payoff import PayoffLeg, build_curves
+from thetalab.strategy.signals import SignalEngine
+from thetalab.strategy.spec import resolve_legs
 
 UNDERLYING = "510300"
-DATA = Path("optlab_data")
+DATA = Path("thetalab_data")
 
 
 def assemble():
@@ -204,7 +204,7 @@ def assemble():
         tdf = tdf[tdf["strike"].isin(strikes[max(0, i0 - 6): i0 + 7])]
     t_rows = []
     if not tdf.empty:
-        from optlab.engine.broker import Broker as _B
+        from thetalab.engine.broker import Broker as _B
         _bk = _B()
         for r in tdf.to_dict(orient="records"):
             row = feed._build_chain(day, day_risk).get(r["contract_id"])

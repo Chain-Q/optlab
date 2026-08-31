@@ -1,7 +1,7 @@
 """
-optlab.server — 本地交易工作台服务器（Python 标准库实现，零第三方依赖）
+thetalab.server — 本地交易工作台服务器（Python 标准库实现，零第三方依赖）
 
-启动：python -m optlab.server  →  http://127.0.0.1:8300
+启动：python -m thetalab.server  →  http://127.0.0.1:8300
 API：GET / 与 /api/state(?underlying=)；POST /api/order、/api/confirm、/api/advance、
      /api/set_day、/api/cancel_all、/api/set_underlying
 多品种：IV/Greeks 五个沪市品种全有；逐合约行情仅 510300 已采集——其他品种可浏览
@@ -14,7 +14,7 @@ import os as _os
 import sys as _sys
 
 # 任意目录启动自愈：把包父目录（WKB）加入模块搜索路径——
-# 必须在 import optlab.* 之前执行（python -m / 直接路径启动都覆盖）
+# 必须在 import thetalab.* 之前执行（python -m / 直接路径启动都覆盖）
 _PARENT = str(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
 if _PARENT not in _sys.path:
     _sys.path.insert(0, _PARENT)
@@ -33,12 +33,12 @@ from urllib.parse import urlparse, parse_qs
 
 import pandas as pd
 
-from optlab.core.models import Account, Direction, Offset, Order, Right
-from optlab.data.persist import StateStore
-from optlab.data.provider import ParquetStore
-from optlab.engine.broker import Broker, MarketRow
-from optlab.engine.paper import PaperTradingRunner
-from optlab.engine.runner import BacktestRunner
+from thetalab.core.models import Account, Direction, Offset, Order, Right
+from thetalab.data.persist import StateStore
+from thetalab.data.provider import ParquetStore
+from thetalab.engine.broker import Broker, MarketRow
+from thetalab.engine.paper import PaperTradingRunner
+from thetalab.engine.runner import BacktestRunner
 
 ROOT = Path(__file__).resolve().parents[1]
 # 用户指定品种（2026-08-29）：科创50 / 创业板(深) / 沪深300 / 中证1000(无场内期权) / 中证500
@@ -61,7 +61,7 @@ class Workbench:
     """装配器 + 模拟时钟 + 多品种切换。路由逻辑在此（可单测），HTTP 壳在 Handler。"""
 
     def __init__(self, data_dir=None, auto_update=True):
-        self.data_dir = data_dir or ROOT / "optlab_data"
+        self.data_dir = data_dir or ROOT / "thetalab_data"
         store = ParquetStore(self.data_dir / "store")
         risk_all = store.read("risk_indicators")
         daily = pd_read(self.data_dir / "store" / "contract_daily" / "all.parquet")
@@ -117,7 +117,7 @@ class Workbench:
         elif collected:
             msg = f"{code} 行情已采集，多品种可交易"
         else:
-            msg = f"{code} 未采集逐合约行情。采集：python -m optlab.scripts.collect_contract_history {code}"
+            msg = f"{code} 未采集逐合约行情。采集：python -m thetalab.scripts.collect_contract_history {code}"
         return {"ok": True, "underlying": code, "name": UND_NAME.get(code, code),
                 "has_daily_bars": has_daily_bars, "collected": collected, "msg": msg}
 
@@ -201,7 +201,7 @@ class Workbench:
         def run():
             try:
                 proc = subprocess.Popen(
-                    [sys.executable, "-m", "optlab.scripts.collect_daily"],
+                    [sys.executable, "-m", "thetalab.scripts.collect_daily"],
                     cwd=str(ROOT), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                     text=True, encoding="utf-8", errors="ignore")
                 for line in proc.stdout:
@@ -252,7 +252,7 @@ class Workbench:
             return 60.0
         self._last_probe = now
         if self._probe_provider is None:
-            from optlab.data.provider import SseOptionProvider
+            from thetalab.data.provider import SseOptionProvider
             self._probe_provider = SseOptionProvider(min_interval=0.3)
         try:
             published = not self._probe_provider.risk_indicators(today).empty
@@ -270,7 +270,7 @@ class Workbench:
         self.update_status = {"running": True, "tail": [], "done": False}
         try:
             proc = subprocess.Popen(
-                [sys.executable, "-m", "optlab.scripts.collect_daily", str(day)],
+                [sys.executable, "-m", "thetalab.scripts.collect_daily", str(day)],
                 cwd=str(ROOT), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                 text=True, encoding="utf-8", errors="ignore")
             for line in proc.stdout:
@@ -313,7 +313,7 @@ class Workbench:
         if self.live_thread and self.live_thread.is_alive():
             return {"ok": True, "msg": "实时行情已在运行"}
         def run():
-            from optlab.data.provider import SseOptionProvider
+            from thetalab.data.provider import SseOptionProvider
             p = SseOptionProvider(min_interval=0.18)
             import time as _t
             while (self.live_target and
@@ -394,7 +394,7 @@ class Workbench:
         def run():
             try:
                 proc = subprocess.Popen(
-                    [sys.executable, "-m", "optlab.scripts.collect_contract_history", code],
+                    [sys.executable, "-m", "thetalab.scripts.collect_contract_history", code],
                     cwd=str(ROOT), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                     text=True, encoding="utf-8", errors="ignore")
                 for line in proc.stdout:
@@ -498,7 +498,7 @@ class Workbench:
 
     def _szse_rows(self, und, day, spot):
         """深市链装配：前结算价反推 IV（交易所同口径）+ 自算 Greeks + 交易所 OI/涨跌停"""
-        from optlab.core.pricing import bs_greeks, implied_vol
+        from thetalab.core.pricing import bs_greeks, implied_vol
         snap, snap_day = self._szse_latest(und)
         if snap is None:
             return [], None, None
@@ -636,7 +636,7 @@ class Workbench:
         f = self.data_dir / "dashboard.html"
         if f.exists():
             return f.read_bytes()
-        return "<h1>dashboard.html 不存在，请先运行 python -m optlab.scripts.build_dashboard</h1>".encode("utf-8")
+        return "<h1>dashboard.html 不存在，请先运行 python -m thetalab.scripts.build_dashboard</h1>".encode("utf-8")
 
 
 class Server(ThreadingHTTPServer):
@@ -720,7 +720,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main(host="127.0.0.1", port=8300, open_browser=True, retries=5):
-    # 目录自愈：从任意目录启动都能找到 optlab 包（ModuleNotFoundError 防护）
+    # 目录自愈：从任意目录启动都能找到 thetalab 包（ModuleNotFoundError 防护）
     import os as _os
     _root = str(ROOT)
     if _root not in _os.getcwd():

@@ -1,5 +1,5 @@
 """
-optlab.engine.metrics — 绩效评估（设计方案 §7.2）
+thetalab.engine.metrics — 绩效评估（设计方案 §7.2）
 """
 from __future__ import annotations
 

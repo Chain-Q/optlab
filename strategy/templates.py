@@ -1,5 +1,5 @@
 """
-optlab.strategy.templates — 内置策略模板库（设计方案 §5.4，P3 验收：≥6 个）
+thetalab.strategy.templates — 内置策略模板库（设计方案 §5.4，P3 验收：≥6 个）
 
 每条腿独立选择行权价/到期月，适应行情变化；JSON 可序列化可分享。
 """

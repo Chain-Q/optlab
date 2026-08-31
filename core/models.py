@@ -1,5 +1,5 @@
 """
-optlab.core.models — 核心数据模型与枚举定义
+thetalab.core.models — 核心数据模型与枚举定义
 
 模型分六类，与方案文档 §4 一一对应：
     Instrument 合约(标的/期权)   Quote/Bar/Tick 行情

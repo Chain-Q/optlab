@@ -1,6 +1,6 @@
 """
-optlab.tests.test_strategy — P3-D 策略 DSL / 模板库 / 盈亏结构 单测
-运行：python -m optlab.tests.test_strategy
+thetalab.tests.test_strategy — P3-D 策略 DSL / 模板库 / 盈亏结构 单测
+运行：python -m thetalab.tests.test_strategy
 """
 import json
 import sys
@@ -12,12 +12,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 import numpy as np
 import pandas as pd
 
-from optlab.core.models import Instrument, Right
-from optlab.strategy.spec import (
+from thetalab.core.models import Instrument, Right
+from thetalab.strategy.spec import (
     ExpirySelector, LegSpec, Sizing, StrikeSelector, StrategySpec, resolve_legs,
 )
-from optlab.strategy.templates import TEMPLATES, get_template
-from optlab.strategy.payoff import PayoffLeg, build_curves
+from thetalab.strategy.templates import TEMPLATES, get_template
+from thetalab.strategy.payoff import PayoffLeg, build_curves
 
 TODAY = date(2026, 8, 28)
 SPOT = 4.679

@@ -1,5 +1,5 @@
 """
-optlab.scripts.collect_daily — 每日收盘后统一采集入口（设计文档 §5.2 日频批处理）
+thetalab.scripts.collect_daily — 每日收盘后统一采集入口（设计文档 §5.2 日频批处理）
 
 用途：server 晚间调度自动调用，或手动运行（即「每日更新.bat」）。做五件事：
     1. 当日 risk_indicators（IV/Greeks，全市场一次调用）
@@ -7,7 +7,7 @@ optlab.scripts.collect_daily — 每日收盘后统一采集入口（设计文�
     3. 逐合约 OI/量 快照（自建历史 OI 库的唯一来源——sina/交易所均无历史逐合约 OI）
     4. 重算 ATM IV 序列（追加）
     5. 重建 dashboard.html
-运行：python -m optlab.scripts.collect_daily [date=今天]
+运行：python -m thetalab.scripts.collect_daily [date=今天]
 """
 import sys
 import time
@@ -20,14 +20,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 import pandas as pd
 
-from optlab.data.provider import ParquetStore, SseOptionProvider
-from optlab.scripts.collect_risk_history import UNDERLYING
+from thetalab.data.provider import ParquetStore, SseOptionProvider
+from thetalab.scripts.collect_risk_history import UNDERLYING
 
 
 def main(day: date = None):
     day = day or date.today()
     t0 = time.time()
-    store = ParquetStore("optlab_data/store")
+    store = ParquetStore("thetalab_data/store")
     p = SseOptionProvider(min_interval=0.3)
     log = []
 
@@ -124,7 +124,7 @@ def main(day: date = None):
 
     # 4) ATM IV 序列重建
     try:
-        from optlab.scripts.collect_risk_history import main as _unused  # noqa
+        from thetalab.scripts.collect_risk_history import main as _unused  # noqa
         hist = store.read("risk_indicators")
         und = hist[hist["underlying"] == UNDERLYING].copy()
         udl = pd.read_parquet(store.root / "underlying_daily" / "all.parquet")

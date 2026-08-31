@@ -1,8 +1,8 @@
 """
-optlab.scripts.run_strangle_backtest — P2 验收：510300 卖出宽跨式回测（约1年）
+thetalab.scripts.run_strangle_backtest — P2 验收：510300 卖出宽跨式回测（约1年）
 
 产出：绩效指标、希腊字母损益归因、成交与拒单统计、净值曲线 CSV
-运行：python -m optlab.scripts.run_strangle_backtest
+运行：python -m thetalab.scripts.run_strangle_backtest
 """
 import sys
 import warnings
@@ -14,9 +14,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 import pandas as pd
 
-from optlab.data.provider import ParquetStore, SseOptionProvider
-from optlab.engine.metrics import fee_share, performance_metrics, trade_stats
-from optlab.engine.runner import BacktestRunner, SellStrangleStrategy
+from thetalab.data.provider import ParquetStore, SseOptionProvider
+from thetalab.engine.metrics import fee_share, performance_metrics, trade_stats
+from thetalab.engine.runner import BacktestRunner, SellStrangleStrategy
 
 UNDERLYING = "510300"
 
@@ -32,7 +32,7 @@ def load(store: ParquetStore, provider: SseOptionProvider):
 
 
 def main():
-    store = ParquetStore("optlab_data/store")
+    store = ParquetStore("thetalab_data/store")
     provider = SseOptionProvider(min_interval=0.3)
     risk, daily, close = load(store, provider)
     days = sorted(risk["trade_date"].unique())

@@ -1,6 +1,6 @@
 """
-optlab.tests.test_server — 本地交易服务器端到端闭环测试（Workbench 逻辑层，不起 HTTP）
-运行：python -m optlab.tests.test_server
+thetalab.tests.test_server — 本地交易服务器端到端闭环测试（Workbench 逻辑层，不起 HTTP）
+运行：python -m thetalab.tests.test_server
 
 流程：挂单 → 拒单校验 → 确认 → 推进交易日撮合 → 持仓出现 → 平仓挂单 → 确认 → 推进 → 平仓成交
 """
@@ -12,14 +12,14 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 import pandas as pd
-from optlab.engine.paper import PaperTradingRunner
-from optlab.server import Workbench
+from thetalab.engine.paper import PaperTradingRunner
+from thetalab.server import Workbench
 
 
 def make_wb(tmp: str) -> Workbench:
     """真实 Workbench（与 server.main 同路径），仅 db 指向临时目录"""
-    wb = Workbench(data_dir=Path("optlab_data"), auto_update=False)  # 测试关调度线程（晚间窗口会真探测真采集）
-    from optlab.data.persist import StateStore
+    wb = Workbench(data_dir=Path("thetalab_data"), auto_update=False)  # 测试关调度线程（晚间窗口会真探测真采集）
+    from thetalab.data.persist import StateStore
     wb.store = StateStore(Path(tmp) / "paper.db")
     wb.paper = PaperTradingRunner(wb.feed, wb.store, data_dir=tmp,
                                   extra_rows_fn=wb._szse_market_rows)

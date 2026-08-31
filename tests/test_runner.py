@@ -1,6 +1,6 @@
 """
-optlab.tests.test_runner — 回测纪律专项测试：未来函数 / 熔断 / T+1 执行
-运行：python -m optlab.tests.test_runner
+thetalab.tests.test_runner — 回测纪律专项测试：未来函数 / 熔断 / T+1 执行
+运行：python -m thetalab.tests.test_runner
 
 红线（用户认知清单）：回测时用了当时根本拿不到的数据 = 未来函数。
 本测试用合成数据验证：T 日生成的决策，成交价必须来自 T+1 日行情。
@@ -14,9 +14,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 import numpy as np
 import pandas as pd
 
-from optlab.core.models import Instrument, Right
-from optlab.engine.broker import FillMode, RiskLimits
-from optlab.engine.runner import BacktestRunner, SellStrangleStrategy
+from thetalab.core.models import Instrument, Right
+from thetalab.engine.broker import FillMode, RiskLimits
+from thetalab.engine.runner import BacktestRunner, SellStrangleStrategy
 
 UND = "510300"
 D1, D2, D3, D4 = date(2026, 1, 5), date(2026, 1, 6), date(2026, 1, 7), date(2026, 1, 8)

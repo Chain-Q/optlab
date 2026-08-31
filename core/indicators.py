@@ -1,5 +1,5 @@
 """
-optlab.core.indicators — 标的技术指标与 UnderlyingSnapshot 构建（§4.1 / §5.5 输入）
+thetalab.core.indicators — 标的技术指标与 UnderlyingSnapshot 构建（§4.1 / §5.5 输入）
 
 全部输入为标的日线 DataFrame（date/open/high/low/close），输出快照数据类。
 IV 相关字段（iv_atm/iv_rank）由数据层（atm_iv 序列）注入。

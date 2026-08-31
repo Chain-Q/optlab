@@ -1,5 +1,5 @@
 """
-optlab.tests.test_core — P0 内核验收单测
+thetalab.tests.test_core — P0 内核验收单测
 
 验收标准（设计方案 §8 P0）：
     - BS 价格与标准值误差 < 1e-6
@@ -8,7 +8,7 @@ optlab.tests.test_core — P0 内核验收单测
     - 涨跌停公式与上交所官方公式一致
     - 到期日 = 到期月第四个周三（顺延）
 
-运行：python -m optlab.tests.test_core
+运行：python -m thetalab.tests.test_core
 """
 import math
 import sys
@@ -17,14 +17,14 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from optlab.core.pricing import (
+from thetalab.core.pricing import (
     bs_price, bs_greeks, black76_price, crr_price, implied_vol,
 )
-from optlab.core.spec import (
+from thetalab.core.spec import (
     calc_margin, calc_limit_prices, expiry_of_month, strike_step,
     build_option_symbol, TradingCalendar,
 )
-from optlab.core.models import Right, Instrument, MarginRule, OptionQuote, Tick
+from thetalab.core.models import Right, Instrument, MarginRule, OptionQuote, Tick
 
 
 def test_bs_price_reference():

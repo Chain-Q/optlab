@@ -1,5 +1,5 @@
 """
-optlab.data.provider — 数据源抽象 + 上交所期权 Provider（akshare 实现）
+thetalab.data.provider — 数据源抽象 + 上交所期权 Provider（akshare 实现）
 
 接口实测基准（akshare 1.18.94，2026-08-29）：
     ak.option_risk_indicator_sse(date)     逐日全市场 IV/Greeks（交易所官方口径，
@@ -260,9 +260,9 @@ class SseOptionProvider(MarketDataProvider):
 
 
 class ParquetStore:
-    """行情事实表存储：optlab_data/store/<name>/<year>-<month>.parquet"""
+    """行情事实表存储：thetalab_data/store/<name>/<year>-<month>.parquet"""
 
-    def __init__(self, root: str | Path = "optlab_data/store"):
+    def __init__(self, root: str | Path = "thetalab_data/store"):
         self.root = Path(root)
         self.root.mkdir(parents=True, exist_ok=True)
 

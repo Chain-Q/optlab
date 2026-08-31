@@ -1,5 +1,5 @@
 """
-optlab.strategy.payoff — 盈亏结构计算（设计方案 §5.4）
+thetalab.strategy.payoff — 盈亏结构计算（设计方案 §5.4）
 
 输出四条曲线：到期损益 / T+0 理论 / D-7 / D-14，并求盈亏平衡点。
 """

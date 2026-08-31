@@ -1,12 +1,12 @@
 """
-optlab.scripts.sensitivity_analysis — 回测红线的量化体检（用户认知清单回应）
+thetalab.scripts.sensitivity_analysis — 回测红线的量化体检（用户认知清单回应）
 
     1. 参数平原：delta_target × stop_multiple × exit_dte = 36 组网格回测
        （红线：参数≤3、参数平原越宽实盘存活率越高）
     2. 成本压力：手续费 5→15 元/张、滑点 ×1→×1.5（红线：成本被低估则实盘由盈转亏）
     3. 未来函数审计：每笔成交日必须晚于决策日
     4. 持仓 Greeks 化验单：平均 Delta 等值 / Vega / Theta / 保证金占用率
-运行：python -m optlab.scripts.sensitivity_analysis
+运行：python -m thetalab.scripts.sensitivity_analysis
 """
 import sys
 import warnings
@@ -18,16 +18,16 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 import pandas as pd
 
-import optlab.engine.broker as broker_mod
-from optlab.core.models import FeeRule
-from optlab.data.provider import ParquetStore, SseOptionProvider
-from optlab.engine.runner import BacktestRunner, SellStrangleStrategy
+import thetalab.engine.broker as broker_mod
+from thetalab.core.models import FeeRule
+from thetalab.data.provider import ParquetStore, SseOptionProvider
+from thetalab.engine.runner import BacktestRunner, SellStrangleStrategy
 
 UNDERLYING = "510300"
 
 
 def load():
-    store = ParquetStore("optlab_data/store")
+    store = ParquetStore("thetalab_data/store")
     provider = SseOptionProvider(min_interval=0.3)
     risk = store.read("risk_indicators")
     risk = risk[risk["underlying"] == UNDERLYING].copy()
@@ -129,7 +129,7 @@ def main():
         print(f"  {k}: {v}")
 
     g.to_csv(store.root.parent / "sensitivity_grid.csv", index=False)
-    print(f"\n网格明细已存: optlab_data/sensitivity_grid.csv")
+    print(f"\n网格明细已存: thetalab_data/sensitivity_grid.csv")
 
 
 if __name__ == "__main__":

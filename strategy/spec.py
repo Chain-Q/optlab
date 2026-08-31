@@ -1,5 +1,5 @@
 """
-optlab.strategy.spec — 声明式策略 DSL（设计方案 §5.4）
+thetalab.strategy.spec — 声明式策略 DSL（设计方案 §5.4）
 
 策略不写死合约，而写「选择规则」（Selector）：
     strike_selector: DELTA(target,tol) / MONEYNESS(pct) / ATM / FIXED(strike)

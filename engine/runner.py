@@ -1,5 +1,5 @@
 """
-optlab.engine.runner — 回测 Runner（T日决策、T+1执行）+ 内置策略示例（§7.1/§7.3）
+thetalab.engine.runner — 回测 Runner（T日决策、T+1执行）+ 内置策略示例（§7.1/§7.3）
 
 关键纪律（§7.3，不可省略）：
     1. T 日决策、T+1 日执行——用当日收盘价撮合当日决策属于作弊

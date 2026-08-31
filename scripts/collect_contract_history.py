@@ -1,10 +1,10 @@
 """
-optlab.scripts.collect_contract_history — 逐合约历史日线批量采集（回测成交价来源）
+thetalab.scripts.collect_contract_history — 逐合约历史日线批量采集（回测成交价来源）
 
 数据源：ak.option_sse_daily_sina(security_id)，成交量单位=份额 →÷10000=张（已在 provider 换算）
-存储：optlab_data/store/contract_daily/all.parquet（多品种合并，含 contract_id 主键，断点续跑）
+存储：thetalab_data/store/contract_daily/all.parquet（多品种合并，含 contract_id 主键，断点续跑）
 附带：采集完成后自动补该品种标的日线到 underlying_daily 表
-运行：python -m optlab.scripts.collect_contract_history [underlying=510300]
+运行：python -m thetalab.scripts.collect_contract_history [underlying=510300]
       underlying=all 采集全部五个沪市品种
 """
 import sys
@@ -18,7 +18,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 import pandas as pd
 
-from optlab.data.provider import ParquetStore, SseOptionProvider
+from thetalab.data.provider import ParquetStore, SseOptionProvider
 
 UNDERLYINGS = ["510300", "510050", "510500", "588000", "588080"]
 
@@ -35,7 +35,7 @@ def build_contract_id_map(risk_all: pd.DataFrame) -> pd.DataFrame:
 def main(underlying: str = "510300"):
     t0 = time.time()
     p = SseOptionProvider(min_interval=0.3)
-    store = ParquetStore("optlab_data/store")
+    store = ParquetStore("thetalab_data/store")
     targets = UNDERLYINGS if underlying == "all" else [underlying]
 
     risk_all = store.read("risk_indicators")

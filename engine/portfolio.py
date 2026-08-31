@@ -1,5 +1,5 @@
 """
-optlab.engine.portfolio — 组合内核：盯市 / 希腊聚合 / 压力矩阵 / 损益归因（§5.3、§7.2）
+thetalab.engine.portfolio — 组合内核：盯市 / 希腊聚合 / 压力矩阵 / 损益归因（§5.3、§7.2）
 
 口径约定（与 pricing.py 一致，组合汇总须 ×张数×合约单位）：
     组合 delta = Σ delta_i × qty_i × mult  → 标的等值股数

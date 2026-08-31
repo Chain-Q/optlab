@@ -68,32 +68,32 @@
 pip install -r requirements.txt
 
 # 2. 采集历史数据（首次约 15 分钟：五品种 240 日风险指标 + 逐合约日线）
-python -m optlab.scripts.collect_risk_history 240
-python -m optlab.scripts.collect_contract_history all
+python -m thetalab.scripts.collect_risk_history 240
+python -m thetalab.scripts.collect_contract_history all
 
 # 3. 启动工作台（浏览器自动打开 http://127.0.0.1:8300）
-python -m optlab.server
+python -m thetalab.server
 ```
 
-Windows 亦可双击「启动工作台.bat」/「每日更新.bat」；或直接打开 `optlab_data/dashboard.html` 静态浏览（只读）。
+Windows 亦可双击「启动工作台.bat」/「每日更新.bat」；或直接打开 `thetalab_data/dashboard.html` 静态浏览（只读）。
 
 ## 常用命令
 
 | 命令 | 说明 |
 |---|---|
-| `python -m optlab.server` | 启动交易工作台（含页面 + API + 晚间调度） |
-| `python -m optlab.scripts.collect_daily` | 采集当日数据（交易日收盘后手动兜底） |
-| `python -m optlab.scripts.collect_contract_history all` | 补采五品种逐合约历史日线 |
-| `python -m optlab.scripts.run_strangle_backtest` | 卖出宽跨式回测（约 1 年） |
-| `python -m optlab.scripts.sensitivity_analysis` | 参数平原 + 成本压力 + 未来函数审计 |
+| `python -m thetalab.server` | 启动交易工作台（含页面 + API + 晚间调度） |
+| `python -m thetalab.scripts.collect_daily` | 采集当日数据（交易日收盘后手动兜底） |
+| `python -m thetalab.scripts.collect_contract_history all` | 补采五品种逐合约历史日线 |
+| `python -m thetalab.scripts.run_strangle_backtest` | 卖出宽跨式回测（约 1 年） |
+| `python -m thetalab.scripts.sensitivity_analysis` | 参数平原 + 成本压力 + 未来函数审计 |
 
 ## 运行测试
 
 ```bash
 # 9 套共 83 项：定价内核 / 撮合 / 组合 / 回测器 / 策略 DSL / 信号 / 模拟盘 / API / 集成
-python -m optlab.tests.test_core
-python -m optlab.tests.test_integration
-# …其余各套位于 optlab/tests/，逐模块直跑
+python -m thetalab.tests.test_core
+python -m thetalab.tests.test_integration
+# …其余各套位于 thetalab/tests/，逐模块直跑
 ```
 
 ## 回测参考（宽跨式 Δ20/20，239 个交易日）
@@ -105,7 +105,7 @@ python -m optlab.tests.test_integration
 ## 目录结构
 
 ```
-optlab/
+thetalab/
 ├── core/       models · pricing(BS/IV求解) · spec(合约规则/保证金/涨跌停) · indicators
 ├── data/       provider(akshare封装) · validator(八道闸门) · persist(SQLite) · ParquetStore
 ├── engine/     broker(撮合) · portfolio · runner(回测) · paper(模拟盘) · metrics

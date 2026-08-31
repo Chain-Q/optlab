@@ -1,10 +1,10 @@
 """
-optlab.scripts.collect_risk_history — 历史风险指标采集 + ATM IV 序列/IV rank 实测
+thetalab.scripts.collect_risk_history — 历史风险指标采集 + ATM IV 序列/IV rank 实测
 
 用途（P1 数据层实测）：
     1. 循环拉取近 N 个交易日的 option_risk_indicator_sse，断点续跑落 Parquet
     2. 用 510300 验证 ATM IV 时间序列与 IV rank 的可计算性
-运行：python -m optlab.scripts.collect_risk_history [days=120]
+运行：python -m thetalab.scripts.collect_risk_history [days=120]
 """
 import sys
 import time
@@ -17,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 import pandas as pd
 
-from optlab.data.provider import SseOptionProvider, ParquetStore
+from thetalab.data.provider import SseOptionProvider, ParquetStore
 
 UNDERLYING = "510300"
 
@@ -25,7 +25,7 @@ UNDERLYING = "510300"
 def main(days: int = 120):
     t0 = time.time()
     p = SseOptionProvider(min_interval=0.3)
-    store = ParquetStore("optlab_data/store")
+    store = ParquetStore("thetalab_data/store")
 
     # 断点续跑：已采集日期集合
     done = set()

@@ -1,5 +1,5 @@
 """
-optlab.data.validator — 行情数据八道校验闸门（设计方案 §5.2）
+thetalab.data.validator — 行情数据八道校验闸门（设计方案 §5.2）
 
 任何数据入库前必须通过 validate_chain()；被拒绝的记录进入 rejects 并计数告警，
 绝不静默修补（唯一例外：涨跌停钳制 + 深度实值 IV 置 NaN 是设计内行为）。

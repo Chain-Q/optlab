@@ -1,6 +1,6 @@
 """
-optlab.tests.test_portfolio — P2 批次B 组合/归因/绩效单测
-运行：python -m optlab.tests.test_portfolio
+thetalab.tests.test_portfolio — P2 批次B 组合/归因/绩效单测
+运行：python -m thetalab.tests.test_portfolio
 """
 import math
 import sys
@@ -9,11 +9,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from optlab.core.models import Account, Greeks, Instrument, Position, Right, Trade
-from optlab.engine.portfolio import (
+from thetalab.core.models import Account, Greeks, Instrument, Position, Right, Trade
+from thetalab.engine.portfolio import (
     Portfolio, PortfolioState, max_drawdown_stats, pnl_attribution,
 )
-from optlab.engine.metrics import performance_metrics, trade_stats
+from thetalab.engine.metrics import performance_metrics, trade_stats
 
 CALL = Instrument(symbol="C", underlying="510300", right=Right.CALL, strike=4.7,
                   expiry=date(2026, 9, 23), multiplier=10000)
@@ -61,7 +61,7 @@ def test_margin_refresh_maintenance():
     pf = Portfolio(a)
     pf.margin_refresh({"P": 0.10}, spot_close=4.679)
     expect = None
-    from optlab.core.spec import calc_margin
+    from thetalab.core.spec import calc_margin
     expect = calc_margin(PUT, option_price=0.10, spot_close=4.679,
                          is_short=True, is_call=False, maintenance=True) * 10
     assert abs(a.margin_used - expect) < 0.01

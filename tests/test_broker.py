@@ -1,6 +1,6 @@
 """
-optlab.tests.test_broker — P2 批次A 撮合内核单测
-运行：python -m optlab.tests.test_broker
+thetalab.tests.test_broker — P2 批次A 撮合内核单测
+运行：python -m thetalab.tests.test_broker
 """
 import math
 import sys
@@ -9,10 +9,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from optlab.core.models import (
+from thetalab.core.models import (
     Account, Direction, Instrument, Offset, Order, Right,
 )
-from optlab.engine.broker import Broker, FillMode, MarketRow, RiskLimits, estimate_spread_pct
+from thetalab.engine.broker import Broker, FillMode, MarketRow, RiskLimits, estimate_spread_pct
 
 DAY = date(2026, 8, 28)
 CALL = Instrument(symbol="510300C2609M04700", underlying="510300", right=Right.CALL,
@@ -81,7 +81,7 @@ def test_sell_open_margin_freeze():
     pos = a.positions["510300C2609M04700"]
     assert pos.net_qty == -10
     # 保证金应等于交易所公式：前结算0.065, S=4.691, K=4.7, 虚值=0
-    from optlab.core.spec import calc_margin
+    from thetalab.core.spec import calc_margin
     m_ref = calc_margin(CALL, option_price=0.065, spot_close=4.691,
                         is_short=True, is_call=True) * 10
     assert abs(a.margin_used - m_ref) < 0.01, (a.margin_used, m_ref)

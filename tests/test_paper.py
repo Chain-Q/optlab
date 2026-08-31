@@ -1,6 +1,6 @@
 """
-optlab.tests.test_paper — P4-F 模拟盘端到端单测（合成数据，两天闭环）
-运行：python -m optlab.tests.test_paper
+thetalab.tests.test_paper — P4-F 模拟盘端到端单测（合成数据，两天闭环）
+运行：python -m thetalab.tests.test_paper
 
 验证：月首挂单 → 人工确认 → T+1 撮合成交 → 状态持久化/恢复 → 报告 JSON。
 """
@@ -14,10 +14,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 import pandas as pd
 
-from optlab.data.persist import StateStore
-from optlab.engine.paper import PaperTradingRunner
-from optlab.engine.runner import BacktestRunner, SellStrangleStrategy
-from optlab.strategy.templates import get_template
+from thetalab.data.persist import StateStore
+from thetalab.engine.paper import PaperTradingRunner
+from thetalab.engine.runner import BacktestRunner, SellStrangleStrategy
+from thetalab.strategy.templates import get_template
 
 UND = "510300"
 D1, D2, D3, D4 = date(2026, 1, 5), date(2026, 1, 6), date(2026, 1, 7), date(2026, 1, 8)

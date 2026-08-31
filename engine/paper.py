@@ -1,5 +1,5 @@
 """
-optlab.engine.paper — 模拟盘 Runner（日频批处理，设计方案 §7.3）
+thetalab.engine.paper — 模拟盘 Runner（日频批处理，设计方案 §7.3）
 
 流程（每交易日收盘后 15:30 跑一次 daily_update）：
     恢复状态 → 数据闸门 → 到期结算 → 盯市/风控 → 强制单/策略建议(PENDING)
@@ -52,7 +52,7 @@ class PaperTradingRunner:
     """
 
     def __init__(self, feed: BacktestRunner, store: StateStore,
-                 data_dir: str | Path = "optlab_data",
+                 data_dir: str | Path = "thetalab_data",
                  strategy=None, advisor: Optional[Advisor] = None,
                  risk_limits: Optional[RiskLimits] = None,
                  dry_run: bool = False,

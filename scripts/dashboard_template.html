@@ -248,7 +248,7 @@ th[data-tip]{ border-bottom:1px dashed var(--text-faint); }
 </head>
 <body>
 <nav>
-  <div class="nav-brand">optlab<small>期权交易工作台 · 模拟</small></div>
+  <div class="nav-brand">thetalab<small>期权交易工作台 · 模拟</small></div>
   <button class="nav-btn active" data-v="trade"><span class="ico">⇄</span>交易</button>
   <button class="nav-btn" data-v="home"><span class="ico">◎</span>概览</button>
   <button class="nav-btn" data-v="risk"><span class="ico">◈</span>风险</button>
@@ -1003,17 +1003,17 @@ document.addEventListener("keydown",e=>{
 /* ================= 启动 ================= */
 document.getElementById("liveNote").innerHTML = LIVE
   ? "🟢 服务器模式：下单/确认/推进交易日可用，状态每 5s 刷新。交易日收盘后 19:00~23:00 服务器自动盯交易所发布并采集（发布约 19:30~21:00，无需手动）；盘中可点「实时行情」——价格为新浪实时快照（当日），IV/Greeks 仍为最近收盘日官方口径，撮合永远按 T+1 收盘价。"
-  : "🟡 静态预览：可浏览行情与研究，但<b>无法下单</b>。启用交易：命令行运行 <code>python -m optlab.server</code> 后打开 http://127.0.0.1:8300";
+  : "🟡 静态预览：可浏览行情与研究，但<b>无法下单</b>。启用交易：命令行运行 <code>python -m thetalab.server</code> 后打开 http://127.0.0.1:8300";
 if(LIVE){ refresh(); setInterval(refresh, 5000); }
 else { renderTrading(pseudoState()); }
 
 function toggleTheme(){
   const r = document.documentElement;
   r.dataset.theme = r.dataset.theme === "dark" ? "light" : "dark";
-  try{ localStorage.setItem("optlab-theme", r.dataset.theme); }catch(e){}
+  try{ localStorage.setItem("thetalab-theme", r.dataset.theme); }catch(e){}
 }
 try{
-  const saved = localStorage.getItem("optlab-theme");
+  const saved = localStorage.getItem("thetalab-theme");
   if(saved) document.documentElement.dataset.theme = saved;
 }catch(e){}
 
