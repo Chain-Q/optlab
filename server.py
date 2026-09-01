@@ -303,12 +303,27 @@ class Workbench:
             time.sleep(60)
 
     # ------------------------------------------------------------ 实时行情（盘中轮询 sina 快照）
+    def _spot_timeout(self, p, u, timeout=5.0):
+        """underlying_spot 带超时保护：东财全量快照偶发网络挂起会卡死整轮轮询（线程存活但缓存空）"""
+        box = {}
+        def _f():
+            try:
+                box["v"] = float(p.underlying_spot(u)["last"])
+            except Exception:
+                pass
+        t = threading.Thread(target=_f, daemon=True)
+        t.start()
+        t.join(timeout)
+        return box.get("v", float("nan"))
+
     def live_start(self, underlying: str, expiry: str = None) -> dict:
-        """开启实时轮询：仅采集当前查看的到期月链（ATM±全部档位），约 5s/轮。
+        """开启实时轮询：仅采集当前查看的到期月链（ATM±6 档），一轮约 40~90s（逐合约 sina 限流）。
         盘中语义：价格=新浪实时快照（当日），IV/Greeks=最近收盘日官方口径（cursor 日）。
         ATM 档按标的实时价定位（cursor 日无该品种风险表时退化为全量前 13 档）。"""
         if underlying not in UNDERLYINGS:
             return {"ok": False, "msg": "未知品种"}
+        if underlying == "159915":
+            return {"ok": False, "msg": "深市快照口径暂无实时源（sina 仅覆盖沪市期权）"}
         self.live_target = (underlying, expiry)
         if self.live_thread and self.live_thread.is_alive():
             return {"ok": True, "msg": "实时行情已在运行"}
@@ -325,11 +340,13 @@ class Workbench:
                     g = (day_risk[day_risk["underlying"] == u]
                          if day_risk is not None else None)
                     spot = None
-                    try:   # 盘中 ATM 按标的实时价定位（与收盘价无关）
-                        spot = float(p.underlying_spot(u)["last"])
+                    try:   # 盘中 ATM 按标的实时价定位（与收盘价无关；带超时防挂起）
+                        spot = self._spot_timeout(p, u)
                     except Exception:
+                        spot = float("nan")
+                    if spot != spot:
                         spot = self.close_all.get((u, day), float("nan"))
-                    if exp:
+                    if exp and g is not None:
                         g = g[g["expiry"].astype(str) == exp]
                     if g is not None and len(g) and spot == spot:
                         strikes = sorted(g["strike"].unique(),
@@ -350,7 +367,7 @@ class Workbench:
                 _t.sleep(4)
         self.live_thread = threading.Thread(target=run, daemon=True)
         self.live_thread.start()
-        return {"ok": True, "msg": "实时行情已开启（sina 快照，约 5s/轮）"}
+        return {"ok": True, "msg": "实时行情已开启（sina 快照，约 1~2 分钟级刷新）"}
 
     def live_stop(self) -> dict:
         self.live_target = None
@@ -571,7 +588,7 @@ class Workbench:
                                  volume=q["volume"], spot_close=sc, spot_prev_close=sc)
                 mp = round(self.broker._margin_per_lot(inst, mrow), 0)
             live = self.live_cache.get(r.contract_id)
-            live_fresh = live and (time.time() - live["ts"]) < 20
+            live_fresh = live and (time.time() - live["ts"]) < 120   # 一轮 40~90s,窗口须覆盖轮时长
             if live_fresh:
                 q = {"last": live["last"], "volume": live["volume"]}
             gk = gmap.get(r.contract_id)
