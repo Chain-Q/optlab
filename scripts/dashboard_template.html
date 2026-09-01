@@ -139,8 +139,9 @@ th:first-child,td:first-child{ text-align:left; }
 th{ color:var(--text-muted); font-weight:500; font-size:var(--t-xs); }
 tr:hover td{ background:var(--hover); }
 td.strike{ color:var(--text); font-weight:700; }
-#ttype tbody tr{ cursor:pointer; }
-#ttype tbody tr.sel td{ background:color-mix(in oklab,var(--accent) 10%,transparent); }
+#ttype tbody td[onclick]{ cursor:pointer; }
+#ttype tbody td.selc{ background:color-mix(in oklab,var(--rise) 15%,transparent); }
+#ttype tbody td.selp{ background:color-mix(in oklab,var(--fall) 15%,transparent); }
 .sig{ padding:8px 0; border-bottom:1px dashed var(--border-soft); }
 .sig .reason{ color:var(--text-muted); font-size:var(--t-sm); }
 .bar{ height:4px; background:var(--surface-muted); border-radius:3px; margin-top:5px; }
@@ -636,8 +637,8 @@ function renderChain(){
        <th data-tip="Vega：隐含波动率涨 1 个点，价格变多少。买方怕 IV 降。">Vega</th>
        <th data-tip="Theta：每过一天价格变多少（负=损耗）。卖方每天赚这个。">Theta</th>`
     : "";
-  const gkCell = (r) => COL_MODE==="full"
-    ? `<td>${fmt(r.gamma,2)}</td><td>${fmt((r.vega||0)*10000,1)}</td><td>${fmt((r.theta||0)*10000,1)}</td>`
+  const gkCell = (r, oc, cls) => COL_MODE==="full"
+    ? `<td ${oc} class="${cls}">${fmt(r.gamma,2)}</td><td ${oc} class="${cls}">${fmt((r.vega||0)*10000,1)}</td><td ${oc} class="${cls}">${fmt((r.theta||0)*10000,1)}</td>`
     : "";
   const sideSpan = COL_MODE==="full" ? 8 : 5;   // 认购/认沽各侧列数（Γ/ν/Θ 三列随完整模式加入）
   document.getElementById("ttype").innerHTML =
@@ -661,15 +662,19 @@ function renderChain(){
      <th data-tip="Delta：标的涨 1 元时期权价格变多少。认沽为负。">Delta</th>
     </tr></thead><tbody>` +
     calls.map(c=>{ const p=putByK[c.strike]||{};
-      const isSel = sel && sel.row.contract_id===c.contract_id ? "sel" : "";
-      return `<tr class="${isSel}" onclick="pick('${c.contract_id}')">
-      <td>${fmt(c.delta,2)}</td><td>${fmt((c.iv||0)*100,1)}</td><td>${fmt(c.last,4)}</td>
-      <td>${fmtInt(c.volume)}</td><td>${fmtInt(c.margin_per_lot)}</td>
-      ${gkCell(c)}
-      <td class="strike">${Number(c.strike).toFixed(2)}</td>
-      ${gkCell(p)}
-      <td>${fmtInt(p.margin_per_lot)}</td><td>${fmtInt(p.volume)}</td><td>${fmt(p.last,4)}</td>
-      <td>${fmt((p.iv||0)*100,1)}</td><td>${fmt(p.delta,2)}</td></tr>`; }).join("")
+      const selC = sel && sel.row.contract_id===c.contract_id;
+      const selP = !!p.contract_id && sel && sel.row.contract_id===p.contract_id;
+      const oc = `onclick="pick('${c.contract_id}')" title="点击选择认购合约"`;
+      const op = p.contract_id ? `onclick="pick('${p.contract_id}')" title="点击选择认沽合约"` : "";
+      const cc = selC ? "selc" : "", pc = selP ? "selp" : "";
+      return `<tr>
+      <td ${oc} class="${cc}">${fmt(c.delta,2)}</td><td ${oc} class="${cc}">${fmt((c.iv||0)*100,1)}</td><td ${oc} class="${cc}">${fmt(c.last,4)}</td>
+      <td ${oc} class="${cc}">${fmtInt(c.volume)}</td><td ${oc} class="${cc}">${fmtInt(c.margin_per_lot)}</td>
+      ${gkCell(c, oc, cc)}
+      <td class="strike ${cc}" ${oc}>${Number(c.strike).toFixed(2)}</td>
+      ${gkCell(p, op, pc)}
+      <td ${op} class="${pc}">${fmtInt(p.margin_per_lot)}</td><td ${op} class="${pc}">${fmtInt(p.volume)}</td><td ${op} class="${pc}">${fmt(p.last,4)}</td>
+      <td ${op} class="${pc}">${fmt((p.iv||0)*100,1)}</td><td ${op} class="${pc}">${fmt(p.delta,2)}</td></tr>`; }).join("")
     + "</tbody>";
 }
 
