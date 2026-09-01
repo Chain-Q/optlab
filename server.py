@@ -20,6 +20,28 @@ if _PARENT not in _sys.path:
     _sys.path.insert(0, _PARENT)
 _os.chdir(_PARENT)
 
+# import 兜底：本机偶发 "thetalab" 默认查找失效（spec 查询正常但 import 语句抛
+# ModuleNotFoundError，疑似环境对精确目录名的文件系统缓存锁定）。
+# 用显式 spec 加载先注册进 sys.modules，后续 from thetalab.* 直接命中已加载模块。
+def _ensure_thetalab_importable():
+    import importlib.util
+    if "thetalab" in _sys.modules:
+        return
+    _pkg = _os.path.join(_PARENT, "thetalab")
+    if _os.path.isdir(_pkg):
+        try:
+            _spec = importlib.util.spec_from_file_location(
+                "thetalab", _os.path.join(_pkg, "__init__.py"),
+                submodule_search_locations=[_pkg])
+            if _spec and _spec.loader:
+                _m = importlib.util.module_from_spec(_spec)
+                _spec.loader.exec_module(_m)
+                _sys.modules["thetalab"] = _m
+        except Exception:
+            pass
+
+_ensure_thetalab_importable()
+
 import json
 import re
 import subprocess

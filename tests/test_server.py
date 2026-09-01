@@ -33,7 +33,7 @@ def test_full_trading_cycle():
     day = wb.cursor
     # 选一个流动性好的虚值合约（成交量最大的 put）
     st = wb.state()
-    chain = [r for r in st["chain"] if r["right"] == "PUT" and r["last"] and r["volume"] > 500]
+    chain = [r for r in st["chain"] if r["right"] == "PUT" and r["last"] and r["volume"] > 500 and r["dte"] > 3]
     chain.sort(key=lambda r: -r["volume"])
     assert chain, "应有可交易合约"
     sym = chain[0]["contract_id"]
@@ -103,7 +103,7 @@ def test_cancel_all():
     wb = make_wb(tmp)
     wb.set_underlying("510300")
     st = wb.state()
-    cands = [r for r in st["chain"] if r["right"]=="PUT" and r["last"] and r["volume"]>500]
+    cands = [r for r in st["chain"] if r["right"]=="PUT" and r["last"] and r["volume"]>500 and r["dte"]>3]
     cands.sort(key=lambda r:-r["volume"])
     sym = cands[0]["contract_id"]
     assert wb.place_order(sym,"SELL","OPEN",1)["ok"]
@@ -120,7 +120,7 @@ def test_multi_underlying_trading():
     wb = make_wb(tmp)
     wb.set_underlying("510050")
     st = wb.state()
-    cands = [r for r in st["chain"] if r["right"]=="PUT" and r["last"] and r["volume"]>500]
+    cands = [r for r in st["chain"] if r["right"]=="PUT" and r["last"] and r["volume"]>500 and r["dte"]>3]
     cands.sort(key=lambda r:-r["volume"])
     sym = cands[0]["contract_id"]
     mp_ref = cands[0]["margin_per_lot"]

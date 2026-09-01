@@ -18,10 +18,38 @@ from pathlib import Path
 warnings.filterwarnings("ignore")
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
+# import 兜底（与 server.py 同因）：本机偶发 "thetalab" 默认查找失效，
+# 显式 spec 加载注册进 sys.modules 后再 from thetalab.* 即可命中。
+def _ensure_thetalab_importable():
+    import importlib.util
+    if "thetalab" in sys.modules:
+        return
+    _parent = str(Path(__file__).resolve().parents[2])
+    _pkg = _parent + "/thetalab"
+    if Path(_pkg).is_dir():
+        try:
+            _spec = importlib.util.spec_from_file_location(
+                "thetalab", Path(_pkg) / "__init__.py",
+                submodule_search_locations=[_pkg])
+            if _spec and _spec.loader:
+                _m = importlib.util.module_from_spec(_spec)
+                _spec.loader.exec_module(_m)
+                sys.modules["thetalab"] = _m
+        except Exception:
+            pass
+
+_ensure_thetalab_importable()
+
 import pandas as pd
 
 from thetalab.data.provider import ParquetStore, SseOptionProvider
 from thetalab.scripts.collect_risk_history import UNDERLYING
+
+
+def self_recent_days(day: date, n: int):
+    """含 day 在内的往前 n 个自然日（日级覆盖检查用）"""
+    from datetime import timedelta
+    return [day - timedelta(days=i) for i in range(n)]
 
 
 def main(day: date = None):
@@ -94,6 +122,85 @@ def main(day: date = None):
         log.append(f"深市快照: {len(g)} 行（{snap_day}）")
     except Exception as e:
         log.append(f"深市快照 FAIL: {type(e).__name__} {str(e)[:60]}")
+
+    # 2c) 沪市逐合约日线日级补缺：新浪日线发布滞后（实测 8-31 采于 20:57 全部只有 8-28），
+    # 而 collect_contract_history 按 security_id 断点、采过即跳过，缺口会永久留存 →
+    # 撮合链缺当日沪市合约，下单报"当日无该合约行情"。
+    # 覆盖检查按"交易日 × 合约数"对照 risk 表（仅有该日 1 个合约也算缺）。
+    try:
+        daily_all = pd.read_parquet(store.root / "contract_daily" / "all.parquet")
+        daily_all["_d"] = daily_all["trade_date"].astype(str).str[:10]
+        cnt_by_day = daily_all[daily_all["_d"] < str(day)].groupby("_d").size().to_dict()
+        risk_df = store.read("risk_indicators")
+        risk_days = set(risk_df["trade_date"].astype(str).str[:10].unique())
+        # 近 3 个已发布交易日(risk 有、非今天)里,日线合约数 < risk 合约数 × 80% 视为缺
+        risk_cnt = risk_df[risk_df["underlying"] != "159915"].groupby(
+            risk_df["trade_date"].astype(str).str[:10]).size().to_dict()
+        missing_days = []
+        for d in sorted(risk_days)[-4:]:
+            if d >= str(day):
+                continue
+            if cnt_by_day.get(d, 0) < 0.8 * risk_cnt.get(d, 0):
+                missing_days.append(d)
+        missing_days = missing_days[:1]   # 单次补 1 天(全合约逐个拉,一天约 600 请求)
+        if missing_days:
+            log.append(f"沪市逐合约日线缺日: {missing_days}，增量补拉（每合约 1 请求）")
+            # 用显式 spec 加载绕过"thetalab 默认查找失效"的环境问题（与头部兜底同理）
+            import importlib.util as _iu
+            def _load_cch():
+                _parent = str(Path(__file__).resolve().parents[2])
+                _f = Path(_parent) / "thetalab" / "scripts" / "collect_contract_history.py"
+                _spec = _iu.spec_from_file_location(
+                    "thetalab.scripts.collect_contract_history", _f)
+                _m = _iu.module_from_spec(_spec)
+                sys.modules[_spec.name] = _m
+                _spec.loader.exec_module(_m)
+                return _m.build_contract_id_map
+            try:
+                from thetalab.scripts.collect_contract_history import build_contract_id_map
+            except Exception:   # 默认查找失败 → 显式加载
+                build_contract_id_map = _load_cch()
+            m_day, m_glob = build_contract_id_map(risk_df)
+            sids = sorted(risk_df[risk_df["underlying"] != "159915"]
+                .groupby("security_id").head(1)
+                .loc[:, ["security_id", "underlying"]]
+                .itertuples(index=False, name=None))
+            have_sids = set(daily_all["security_id"].unique())
+            ok2 = fail2 = 0
+            new_rows = []
+            for sid, und in sids:
+                try:
+                    df = p.contract_daily(sid)
+                    if df.empty:
+                        continue
+                    df["security_id"] = sid
+                    df["underlying"] = und
+                    # 只保留缺口日期的行（老合约已有部分日期，按 (trade_date, security_id) 补）
+                    known = daily_all[daily_all["security_id"] == sid]["trade_date"].astype(str).str[:10]
+                    df = df[~df["date"].astype(str).str[:10].isin(set(known))]
+                    if len(df) == 0:
+                        continue
+                    df["trade_date"] = df["date"]
+                    key = list(zip(df["trade_date"], df["security_id"]))
+                    cid = pd.Series([m_day.get(k) for k in key]) \
+                        .fillna(df["security_id"].map(m_glob))
+                    df["contract_id"] = cid.fillna(df["security_id"])
+                    new_rows.append(df)
+                    ok2 += 1
+                except Exception:
+                    fail2 += 1
+            if new_rows:
+                inc = pd.concat(new_rows, ignore_index=True)
+                all2 = pd.concat([daily_all, inc], ignore_index=True) \
+                    .drop_duplicates(subset=["trade_date", "contract_id"], keep="last")
+                all2.to_parquet(store.root / "contract_daily" / "all.parquet", index=False)
+                log.append(f"逐合约日线补缺: +{len(inc)} 行（{ok2} 合约 / fail {fail2}）→ 落库 {len(all2)}")
+            else:
+                log.append(f"逐合约日线补缺: 数据源仍无 {missing_days}（发布滞后），下轮重试")
+        else:
+            log.append("逐合约日线日级覆盖完整（近 3 交易日）")
+    except Exception as e:
+        log.append(f"逐合约日线补缺 FAIL: {type(e).__name__} {str(e)[:60]}")
 
     # 3) 逐合约 OI/量 快照（当日全合约，自建 OI 库）
     try:
