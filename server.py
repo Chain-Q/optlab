@@ -55,6 +55,7 @@ from urllib.parse import urlparse, parse_qs
 
 import pandas as pd
 
+from thetalab import __version__ as THE_VERSION
 from thetalab.core.models import Account, Direction, Offset, Order, Right
 from thetalab.data.persist import StateStore
 from thetalab.data.provider import ParquetStore
@@ -778,7 +779,7 @@ def main(host="127.0.0.1", port=8300, open_browser=True, retries=5):
         print(f"无法绑定端口 {port}~{port + retries - 1}，请手动指定端口")
         sys.exit(1)
     url = f"http://{host}:{port}"
-    print(f"thetalab — ETF 期权模拟交易工作台: {url}")
+    print(f"thetalab {THE_VERSION} — ETF 期权模拟交易工作台: {url}")
     print(f"品种: {','.join(UNDERLYINGS)}（仅 510300 已开放模拟撮合，其余可浏览）")
     print(f"模拟时钟: {Handler.wb.cursor} | 数据: {Handler.wb.days[0]} ~ {Handler.wb.days[-1]}")
     print("关闭服务：在本窗口按 Ctrl+C")

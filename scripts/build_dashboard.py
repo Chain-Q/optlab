@@ -18,6 +18,24 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 import pandas as pd
 import numpy as np
 
+# import 兜底（同 server.py）：本机偶发 thetalab 默认查找失效
+def _ensure_thetalab_importable():
+    import importlib.util as _iu
+    import sys as _s
+    if "thetalab" in _s.modules:
+        return
+    _pkg = str(Path(__file__).resolve().parents[2]) + "/thetalab"
+    if Path(_pkg).is_dir():
+        try:
+            _spec = _iu.spec_from_file_location(
+                "thetalab", Path(_pkg) / "__init__.py", submodule_search_locations=[_pkg])
+            if _spec and _spec.loader:
+                _m = _iu.module_from_spec(_spec); _spec.loader.exec_module(_m)
+                _s.modules["thetalab"] = _m
+        except Exception:
+            pass
+_ensure_thetalab_importable()
+
 from thetalab.core.indicators import build_indicators, iv_rank_of
 from thetalab.data.persist import StateStore
 from thetalab.data.provider import ParquetStore, SseOptionProvider
@@ -223,6 +241,7 @@ def main():
     payload = {
         "build_time": datetime.now().strftime("%Y-%m-%d %H:%M"),
         "server_started": None,
+        "version": __import__("thetalab").__version__,
         "day": str(day), "underlying": UNDERLYING, "spot": spot,
         "ind": {k: (round(v, 4) if isinstance(v, float) and v == v else v)
                 for k, v in ind.items() if isinstance(v, (int, float, str))},

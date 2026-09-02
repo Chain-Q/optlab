@@ -491,7 +491,7 @@ th[data-tip]{ border-bottom:1px dashed var(--text-faint); }
 <script>
 let D = __DATA__;
 document.getElementById("buildInfo").textContent =
-  `页面构建 ${D.build_time||"—"} ｜ 服务器启动 ${D.server_started||"—（静态预览）"} ｜ 数据截止 ${D.day}。若时间早于预期：重启服务器/重新生成页面`;
+  `thetalab ${D.version||""} ｜ 页面构建 ${D.build_time||"—"} ｜ 服务器启动 ${D.server_started||"—（静态预览）"} ｜ 数据截止 ${D.day}。若时间早于预期：重启服务器/重新生成页面`;
 const LIVE = location.protocol.startsWith("http");
 let STATE = null;          // 服务器模式实时状态
 let sel = null;            // {row, price, dir, off}
@@ -853,7 +853,7 @@ function refresh(){
     if(!s.ok) return;
     if(s.server_started){
       document.getElementById("buildInfo").textContent =
-        `页面构建 ${D.build_time||"—"} ｜ 服务器启动 ${s.server_started} ｜ 数据截止 ${D.day}`;
+        `thetalab ${D.version||""} ｜ 页面构建 ${D.build_time||"—"} ｜ 服务器启动 ${s.server_started} ｜ 数据截止 ${D.day}`;
     }
     const first = !STATE || STATE.underlying !== s.underlying;
     STATE = s; renderTrading(s);
