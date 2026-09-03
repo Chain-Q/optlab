@@ -71,7 +71,7 @@ class PaperTradingRunner:
         self.pf: Optional[Portfolio] = None
 
     # ------------------------------------------------------------ 主入口
-    def daily_update(self, day: date) -> DailyReport:
+    def daily_update(self, day: date, include_pending: bool = False) -> DailyReport:
         report = DailyReport(day=day, equity=0.0, margin_ratio=0.0)
         # 1) 恢复状态
         self.account = self.store.load_account() or Account(initial_cash=1_000_000.0,
@@ -104,7 +104,7 @@ class PaperTradingRunner:
                               "pnl": t.realized_pnl} for t in fills]
 
         # 4) 人工确认单（昨日 PENDING → 今日按 CLOSE_SLIPPAGE 撮合）
-        report.fills += self._match_confirmed(day, chain)
+        report.fills += self._match_confirmed(day, chain, include_pending=include_pending)
 
         # 5) 盯市 + 维持保证金（多品种：各合约用其标的当日收盘）+ Greeks 快照
         self.pf.update_mark({s: r.close for s, r in chain.items() if r.close > 0})
@@ -178,10 +178,15 @@ class PaperTradingRunner:
             n += 1
         return [{"confirmed": n, "note": "确认后将于下一交易日按 CLOSE_SLIPPAGE 撮合"}]
 
-    def _match_confirmed(self, day: date, chain: Dict[str, MarketRow]) -> List[dict]:
-        """撮合昨日已人工确认（CONFIRMED）的订单——T+1 执行纪律的落地"""
+    def _match_confirmed(self, day: date, chain: Dict[str, MarketRow],
+                         include_pending: bool = False) -> List[dict]:
+        """撮合已人工确认（CONFIRMED）的订单——T+1 执行纪律的落地。
+        include_pending=True 时同时撮合 PENDING 单（当日撮合：收盘后挂单→推进→当天成交）。"""
         fills = []
-        for p in self.store.pending(status="CONFIRMED"):
+        pend = self.store.pending(status="CONFIRMED")
+        if include_pending:
+            pend += self.store.pending(status="PENDING")
+        for p in pend:
             inst_d = p["instrument"]
             inst = next((r.instrument for r in chain.values()
                          if r.instrument.symbol == inst_d["symbol"]), None)

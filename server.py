@@ -407,7 +407,15 @@ class Workbench:
     def advance(self):
         i = self.days.index(self.cursor) if self.cursor in self.days else 0
         if i + 1 >= len(self.days):
-            return {"ok": False, "msg": "已到数据尽头，请收盘后运行 collect_daily 采集新交易日"}
+            # 数据尽头（收盘后、明日数据未采）：同日本日撮合——
+            # 用当天收盘价把 PENDING/CONFIRMED 挂单撮合掉，不阻塞收盘后的模拟下单。
+            if self.store.pending("CONFIRMED") or self.store.pending("PENDING"):
+                day = self.cursor
+                report = self.paper.daily_update(day, include_pending=True)
+                return {"ok": True, "day": str(day), "equity": report.equity,
+                        "fills": report.fills, "notes": report.notes,
+                        "signals": len(report.signals), "same_day": True}
+            return {"ok": False, "msg": "已到数据尽头（当前为最新交易日）。可在此日挂单后再次点击「推进」按当日收盘价撮合"}
         self.cursor = self.days[i + 1]
         report = self.paper.daily_update(self.cursor)
         return {"ok": True, "day": str(self.cursor), "equity": report.equity,
