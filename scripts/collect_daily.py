@@ -144,7 +144,8 @@ def main(day: date = None):
                 missing_days.append(d)
         missing_days = missing_days[:1]   # 单次补 1 天(全合约逐个拉,一天约 600 请求)
         if missing_days:
-            log.append(f"沪市逐合约日线缺日: {missing_days}，增量补拉（每合约 1 请求）")
+            tgt = missing_days[0]   # 本次只补 1 天
+            log.append(f"沪市逐合约日线缺日: {tgt}，增量补拉（仅缺失合约）")
             # 用显式 spec 加载绕过"thetalab 默认查找失效"的环境问题（与头部兜底同理）
             import importlib.util as _iu
             def _load_cch():
@@ -161,25 +162,24 @@ def main(day: date = None):
             except Exception:   # 默认查找失败 → 显式加载
                 build_contract_id_map = _load_cch()
             m_day, m_glob = build_contract_id_map(risk_df)
-            sids = sorted(risk_df[risk_df["underlying"] != "159915"]
-                .groupby("security_id").head(1)
-                .loc[:, ["security_id", "underlying"]]
-                .itertuples(index=False, name=None))
-            have_sids = set(daily_all["security_id"].unique())
+            # 仅缺失合约：risk 该日有、contract_daily 该日缺的 security_id
+            risk_tgt = risk_df[risk_df["trade_date"].astype(str).str[:10] == tgt]
+            have_tgt = set(daily_all[daily_all["_d"] == tgt]["security_id"].unique())
+            todo = [(s, u) for s, u in
+                    risk_tgt[risk_tgt["underlying"] != "159915"]
+                    .drop_duplicates("security_id")[["security_id", "underlying"]]
+                    .itertuples(index=False, name=None)
+                    if s not in have_tgt]
+            log.append(f"  目标日 {tgt} 合约 {risk_tgt['security_id'].nunique()} 个，缺失待补 {len(todo)}")
             ok2 = fail2 = 0
             new_rows = []
-            for sid, und in sids:
+            for sid, und in todo:
                 try:
                     df = p.contract_daily(sid)
                     if df.empty:
                         continue
                     df["security_id"] = sid
                     df["underlying"] = und
-                    # 只保留缺口日期的行（老合约已有部分日期，按 (trade_date, security_id) 补）
-                    known = daily_all[daily_all["security_id"] == sid]["trade_date"].astype(str).str[:10]
-                    df = df[~df["date"].astype(str).str[:10].isin(set(known))]
-                    if len(df) == 0:
-                        continue
                     df["trade_date"] = df["date"]
                     key = list(zip(df["trade_date"], df["security_id"]))
                     cid = pd.Series([m_day.get(k) for k in key]) \
@@ -196,7 +196,7 @@ def main(day: date = None):
                 all2.to_parquet(store.root / "contract_daily" / "all.parquet", index=False)
                 log.append(f"逐合约日线补缺: +{len(inc)} 行（{ok2} 合约 / fail {fail2}）→ 落库 {len(all2)}")
             else:
-                log.append(f"逐合约日线补缺: 数据源仍无 {missing_days}（发布滞后），下轮重试")
+                log.append(f"逐合约日线补缺: 数据源仍无 {tgt}（发布滞后），下轮重试")
         else:
             log.append("逐合约日线日级覆盖完整（近 3 交易日）")
     except Exception as e:
@@ -211,11 +211,23 @@ def main(day: date = None):
         if risks.empty:
             log.append(f"OI 快照跳过：{day} 非交易日（无行情）")
         else:
+            sids = list(risks["security_id"].unique())
+            # 并行拉取：每线程独立 provider（各自 0.35s 限流，N 并发≈N 倍吞吐，避免共享限流竞态）
+            from concurrent.futures import ThreadPoolExecutor, as_completed
             rows = []
-            for sid in risks["security_id"].unique():
-                s_ = p.contract_spot(sid)
-                s_["trade_date"] = day
-                rows.append(s_)
+            def _fetch_one(sid):
+                try:
+                    sp = SseOptionProvider(min_interval=0.35)
+                    s_ = sp.contract_spot(sid)
+                    s_["trade_date"] = day
+                    return s_
+                except Exception:
+                    return None
+            with ThreadPoolExecutor(max_workers=5) as ex:
+                for fut in as_completed([ex.submit(_fetch_one, s) for s in sids]):
+                    r = fut.result()
+                    if r is not None:
+                        rows.append(r)
             oi_df = pd.DataFrame(rows)
             out = store.root / "oi_snapshots"
             out.mkdir(parents=True, exist_ok=True)
